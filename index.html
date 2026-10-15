@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=auto">
+<title>Bloom</title>
+<meta name="theme-color" content="#FBF4F1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Bloom">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+/* ============================================================
+   EINSTELLUNGEN VON LARA – hier vor dem Hochladen ausfüllen
+   (kann später auch in der App unter "Ich" geändert werden)
+   ============================================================ */
+window.BLOOM_CONFIG = {
+  laraName: "Lara",
+  laraPhone: "+491792100300",
+  sisterName: "Kim",
+  kidName: "Ella",
+  signature: "Laraline",
+  loveNote:
+    "Kim, ich hab dich so unfassbar doll lieb. Diese App hab ich für dich gebaut, weil du so viel schaffst und es selbst oft nicht siehst. " +
+    "Hier macht dir niemand Druck. Die App soll dich einfach jeden Tag ein bisschen daran erinnern, wie stark du bist. " +
+    "Jede kleine Sache zählt. Und wenn du Lust auf Quatschen hast: Du weißt, wo du mich findest.",
+  aiUrl: ""               // optional: Adresse des Cloudflare Workers (siehe README)
+};
+</script>
+<style>
+:root{
+  --bg:#FBF4F1; --card:#FFFFFF; --ink:#2E2226; --ink2:#5C4A50; --muted:#9A878C;
+  --rose:#D45F82; --rose-deep:#B8456A; --blush:#F8DDE4; --petal:#F2C2CF; --line:#F0E2E5;
+  --sage:#E1EBE2; --butter:#FBF0D3; --peach:#FADFCF; --sky:#E2EAF4;
+  --m1:#C9B8E0; --m2:#B9CDE6; --m3:#F3DFA6; --m4:#F6BFCB; --m5:#E7799A;
+  --shadow:0 1px 2px rgba(80,40,50,.04),0 8px 24px rgba(120,60,80,.07);
+  --r:22px; --serif:"Fraunces",Georgia,"Times New Roman",serif; --sans:"Inter",-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.45}
+body{min-height:100dvh;overscroll-behavior-y:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input,textarea{font:inherit;color:var(--ink)}
+.app{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 96px)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
+.kicker{font-size:11px;letter-spacing:.12em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;text-transform:uppercase;color:var(--muted);font-weight:500}
+.sos{flex:none;white-space:nowrap;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--rose-deep);background:var(--blush);padding:8px 13px;border-radius:999px}
+.sos svg{width:16px;height:16px}
+h1{font-family:var(--serif);font-weight:400;font-size:38px;line-height:1.05;letter-spacing:-.02em;margin:10px 0 6px}
+h1 em{font-style:italic;color:var(--rose)}
+h2{font-family:var(--serif);font-weight:400;font-size:24px;letter-spacing:-.01em;margin:0 0 4px}
+h3{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:28px 0 10px}
+.sub{color:var(--ink2);margin:0 0 18px}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;margin-bottom:14px}
+.muted{color:var(--muted)} .small{font-size:13px}
+.row{display:flex;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 22px;border-radius:999px;font-weight:600;font-size:16px;transition:transform .12s}
+.btn:active{transform:scale(.97)}
+.btn svg{width:18px;height:18px}
+.btn-primary{background:var(--rose);color:#fff;box-shadow:0 6px 18px rgba(212,95,130,.28)}
+.btn-soft{background:var(--blush);color:var(--rose-deep)}
+.btn-ghost{background:#F6EEF0;color:var(--ink2)}
+.btn-block{width:100%}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:999px;background:#F6EEF0;color:var(--ink2);font-size:14px;font-weight:500;margin:0 6px 8px 0;transition:all .15s}
+.chip.on{background:var(--rose);color:#fff}
+.chip:active{transform:scale(.96)}
+
+/* Energie */
+.energy{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.en{border-radius:18px;padding:16px 8px 14px;text-align:center;background:#F7F0F2;transition:all .2s}
+.en .bars{display:flex;justify-content:center;gap:4px;height:26px;align-items:flex-end;margin-bottom:8px}
+.en .bars i{display:block;width:7px;border-radius:4px;background:var(--petal)}
+.en .bars i.f{background:var(--rose)}
+.en b{display:block;font-weight:600;font-size:15px}
+.en span{font-size:12px;color:var(--muted)}
+.en.on{background:var(--blush);box-shadow:inset 0 0 0 2px var(--rose)}
+
+/* Eine Sache */
+.one{background:linear-gradient(160deg,#FFFFFF 0%,#FFF6F8 100%);padding:26px 22px 20px}
+.one .cat{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);font-weight:600}
+.one .task{font-family:var(--serif);font-size:30px;line-height:1.12;letter-spacing:-.015em;margin:10px 0 6px}
+.one .hint{color:var(--muted);font-size:14px;margin-bottom:20px}
+.one .actions{display:flex;gap:8px;margin-top:12px}
+.one .actions button{flex:1;height:44px;border-radius:999px;background:#F6EEF0;color:var(--ink2);font-size:14px;font-weight:500}
+.progress{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.progress i{width:28px;height:28px;border-radius:50%;background:#F4EAED;display:flex;align-items:center;justify-content:center}
+.progress i svg{width:28px;height:28px}
+
+.lara-quote{background:var(--blush);border-radius:var(--r);padding:20px 22px;margin-bottom:14px}
+.lara-quote p{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.35;margin:0 0 8px;color:#4A2A35}
+.lara-quote span{font-size:13px;color:var(--rose-deep);font-weight:500}
+
+.list-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.list-item:last-child{border-bottom:0}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+
+/* Tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(251,244,241,.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:8px 0 calc(env(safe-area-inset-bottom) + 8px);z-index:20}
+.tabs .in{max-width:480px;margin:0 auto;display:flex;justify-content:space-around}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:var(--muted);padding:4px 18px}
+.tab svg{width:24px;height:24px}
+.tab.on{color:var(--rose-deep)}
+.fab{position:fixed;right:max(18px,calc(50% - 222px));bottom:calc(env(safe-area-inset-bottom) + 84px);height:52px;padding:0 20px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;box-shadow:0 10px 26px rgba(46,34,38,.25);z-index:15}
+.fab svg{width:18px;height:18px}
+
+/* Sheets */
+.scrim{position:fixed;inset:0;background:rgba(46,34,38,.32);opacity:0;pointer-events:none;transition:opacity .25s;z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;background:var(--bg);border-radius:28px 28px 0 0;padding:10px 20px calc(env(safe-area-inset-bottom) + 24px);max-height:92dvh;overflow-y:auto;transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.8,.2,1);z-index:41}
+.sheet.on{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:#E6D6DA;margin:0 auto 14px}
+.sheet-close{position:absolute;right:16px;top:14px;width:36px;height:36px;border-radius:50%;background:#F1E6E9;display:flex;align-items:center;justify-content:center}
+.sheet-close svg{width:18px;height:18px}
+
+/* Mood */
+.moods{display:flex;justify-content:space-between;gap:6px}
+.mood{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--ink2);padding:8px 0;border-radius:16px;transition:all .15s}
+.mood i{width:40px;height:40px;border-radius:50%;display:block;transition:transform .15s}
+.mood.on{background:#fff;box-shadow:var(--shadow)}
+.mood.on i{transform:scale(1.12)}
+textarea{width:100%;border:0;border-radius:16px;background:#fff;box-shadow:var(--shadow);padding:14px;font-size:16px;resize:none;min-height:90px;outline:none}
+input[type=text],input[type=tel],input[type=number],input[type=url]{width:100%;height:50px;border:0;border-radius:14px;background:#fff;box-shadow:var(--shadow);padding:0 14px;font-size:16px;outline:none}
+label.f{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin:14px 0 6px}
+
+/* Garten */
+.garden{background:linear-gradient(180deg,#FFF7F4 0%,#FCEBEE 100%);border-radius:var(--r);padding:18px 14px 12px;box-shadow:var(--shadow);margin-bottom:14px}
+.garden .bed{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;min-height:120px;align-items:end}
+.garden .bed svg{width:100%;height:auto;animation:pop .5s both}
+.garden .count{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.garden .count b{font-family:var(--serif);font-size:44px;font-weight:400;line-height:1;color:var(--rose-deep)}
+@keyframes pop{from{transform:scale(.2) translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal .wd{font-size:11px;color:var(--muted);font-weight:600;padding-bottom:4px}
+.cal .d{aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;color:var(--ink2);position:relative}
+.cal .d.has{background:var(--blush);color:var(--rose-deep);font-weight:600}
+.cal .d.today{box-shadow:inset 0 0 0 1.5px var(--rose)}
+.cal .d .pd{display:flex;gap:2px;margin-top:2px}
+.cal .d .pd i{width:4px;height:4px;border-radius:50%;background:var(--rose)}
+.calnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.calnav button{width:36px;height:36px;border-radius:50%;background:#F6EEF0;display:flex;align-items:center;justify-content:center}
+.calnav svg{width:16px;height:16px}
+.insight{display:flex;gap:14px;align-items:flex-start}
+.insight .ic{width:38px;height:38px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center}
+.insight .ic svg{width:20px;height:20px}
+.letter{background:#FFFDFB;border-radius:var(--r);box-shadow:var(--shadow);padding:24px 22px;margin-bottom:14px;border-top:4px solid var(--petal)}
+.letter .kw{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--rose)}
+.letter p{font-family:var(--serif);font-size:17px;line-height:1.5;margin:10px 0;color:#3A2A2F}
+
+/* Rewards */
+.rw{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.rw:last-child{border-bottom:0}
+.rw .bar{height:6px;border-radius:3px;background:#F4E8EB;overflow:hidden;margin-top:6px}
+.rw .bar i{display:block;height:100%;background:var(--rose);border-radius:3px}
+.rw .badge{font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px}
+
+/* Celebrate */
+.celebrate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60}
+.celebrate .bloom{animation:bloomin 1.6s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes bloomin{0%{transform:scale(.1) rotate(-30deg);opacity:0}25%{transform:scale(1.15) rotate(0);opacity:1}60%{transform:scale(1)}100%{transform:scale(.3) translateY(60vh);opacity:0}}
+.petal{position:fixed;width:10px;height:14px;border-radius:50% 50% 50% 0;z-index:59;pointer-events:none;animation:fall 1.8s ease-out forwards}
+@keyframes fall{from{transform:translate(0,0) rotate(0);opacity:1}to{transform:translate(var(--x),var(--y)) rotate(var(--r));opacity:0}}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 16px);transform:translate(-50%,-260%);background:var(--ink);color:#fff;padding:14px 18px;border-radius:18px;max-width:min(420px,calc(100% - 32px));font-size:15px;line-height:1.35;box-shadow:0 12px 30px rgba(0,0,0,.18);transition:transform .35s cubic-bezier(.2,.8,.2,1);z-index:70}
+.toast.on{transform:translate(-50%,0)}
+
+/* Atem */
+.breath{width:200px;height:200px;margin:20px auto 10px;border-radius:50%;background:radial-gradient(circle,#F8C9D5 0%,#F8DDE4 60%,transparent 70%);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:22px;color:var(--rose-deep);transition:transform 4s ease-in-out}
+
+/* Onboarding */
+.ob{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:40px 4px}
+.ob .big{font-family:var(--serif);font-size:44px;line-height:1.02;letter-spacing:-.02em;margin:16px 0}
+.ob .big em{color:var(--rose);font-style:italic}
+.steps{display:flex;gap:6px;margin-bottom:24px}
+.steps i{height:4px;flex:1;border-radius:2px;background:#EBDCE0}
+.steps i.on{background:var(--rose)}
+.chat{display:flex;flex-direction:column;gap:10px;margin:10px 0 14px}
+.msg{padding:12px 16px;border-radius:18px;max-width:86%;font-size:15px;white-space:pre-wrap}
+.msg.me{align-self:flex-end;background:var(--rose);color:#fff;border-bottom-right-radius:6px}
+.msg.ai{align-self:flex-start;background:#fff;box-shadow:var(--shadow);border-bottom-left-radius:6px}
+.switch{width:52px;height:32px;border-radius:16px;background:#E9DCDF;position:relative;transition:background .2s;flex:none}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15);transition:transform .2s}
+.switch.on{background:var(--rose)} .switch.on::after{transform:translateX(20px)}
+.app{position:relative;overflow-x:clip}
+.app > *:not(.tattoo){position:relative;z-index:1}
+.tattoo{position:absolute;pointer-events:none;z-index:0;color:#2A1D22;opacity:.3}
+.tattoo svg{width:100%;height:auto;display:block}
+.ink{background:#211A1D;color:#FBEFF2;border-radius:var(--r);padding:22px 22px 20px;margin-bottom:14px;position:relative;overflow:hidden}
+.ink .lbl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#F2A7BC;font-weight:600}
+.ink p{font-family:var(--serif);font-size:20px;line-height:1.32;margin:8px 0 0}
+.ink .stars{position:absolute;right:-6px;top:-6px;width:84px;color:#F2A7BC;opacity:.5}
+.appt{display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.appt:last-child{border-bottom:0}
+.appt .when{flex:none;width:58px;text-align:center;border-radius:14px;background:#F6EEF0;padding:6px 0;font-size:12px;font-weight:600;color:var(--ink2);line-height:1.25}
+.appt .when b{display:block;font-family:var(--serif);font-weight:400;font-size:20px;color:var(--ink)}
+.appt.today .when{background:#211A1D;color:#F2A7BC}.appt.today .when b{color:#fff}
+.cal .d .ap{position:absolute;top:4px;right:5px;width:6px;height:6px;border-radius:50%;background:#211A1D}
+.night{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border-radius:18px;background:#F6EEF0;margin-bottom:14px;text-align:left}
+.night.on{background:#211A1D;color:#fff}
+.night .ck{width:28px;height:28px;border-radius:50%;border:1.6px solid currentColor;display:flex;align-items:center;justify-content:center;flex:none}
+.night .ck svg{width:16px;height:16px}
+input[type=date],input[type=time]{width:100%;height:50px;border:0;border-radius:14px;background:#fff;box-shadow:var(--shadow);padding:0 14px;font-size:16px;outline:none;color:var(--ink);-webkit-appearance:none;appearance:none}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ================= Icons (Linien) ================= */
+const I = (p,extra="") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ${extra}>${p}</svg>`;
+const ic = {
+  sun: I('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+  flower: I('<circle cx="12" cy="9" r="2.2"/><path d="M12 6.8c0-2.4 1.2-3.8 2.4-3.8S16.6 5 14.6 7.4M14.2 9c2.4 0 3.8 1.2 3.8 2.4s-2 2.2-4.4.2M12 11.2c0 2.4-1.2 3.8-2.4 3.8S7.4 13 9.4 10.6M9.8 9C7.4 9 6 7.8 6 6.6S8 4.4 10.4 6.4M12 13v8M12 18c-2 0-3.5-1-4-2.5M12 17c1.8 0 3.2-.9 3.7-2.2"/>'),
+  user: I('<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.3-3.6 4.2-5.4 7.5-5.4s6.2 1.8 7.5 5.4"/>'),
+  plus: I('<path d="M12 5v14M5 12h14"/>'),
+  check: I('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  x: I('<path d="M6 6l12 12M18 6L6 18"/>'),
+  phone: I('<path d="M5 4h3.5l1.8 4.5-2.3 1.4a11 11 0 0 0 6.1 6.1l1.4-2.3L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5C10.6 20 4 13.4 3.5 5.6A1.5 1.5 0 0 1 5 4z"/>'),
+  msg: I('<path d="M4 5h16v11H9l-5 4z"/>'),
+  wind: I('<path d="M3 8h10.5a2.5 2.5 0 1 0-2.5-2.5M3 12h15.5a2.5 2.5 0 1 1-2.5 2.5M3 16h7"/>'),
+  leaf: I('<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14z"/><path d="M5 19c3-4 6-6.5 9-8"/>'),
+  down: I('<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 20h14"/>'),
+  up: I('<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 20h14"/>'),
+  spark: I('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/>'),
+  left: I('<path d="M15 5l-7 7 7 7"/>'),
+  right: I('<path d="M9 5l7 7-7 7"/>'),
+  small: I('<path d="M8 12h8"/><circle cx="12" cy="12" r="8"/>'),
+  shuffle: I('<path d="M4 7h3c4 0 6 10 10 10h3M17 14l3 3-3 3M4 17h3c1.5 0 2.7-1.4 3.7-3M17 4l3 3-3 3M20 7h-3c-1.5 0-2.7 1.4-3.7 3"/>'),
+  heart: I('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'),
+  clock: I('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>'),
+  moon: I('<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>'),
+  baby: I('<circle cx="12" cy="10" r="5"/><path d="M10 10h.01M14 10h.01M10.5 12.5c.9.6 2.1.6 3 0M12 5c0-1 .8-2 2-2M8 19.5c1.2-1.4 2.5-2 4-2s2.8.6 4 2"/>'),
+  pen: I('<path d="M4 20l4-1L19 8l-3-3L5 16z"/>'),
+  trash: I('<path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/>'),
+  gift: I('<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M4 13h16M12 9v11M12 9c-1.5-3-5-3.5-5-1.5S10 9 12 9zM12 9c1.5-3 5-3.5 5-1.5S14 9 12 9z"/>'),
+  chat: I('<path d="M5 18l-1 3 3.5-1.5A8.5 8.5 0 1 0 5 18z"/>'),
+  eye: I('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/>'),
+};
+
+/* ================= Tattoo-Linien (Deko am Rand) ================= */
+const TAT = {
+  rose:`<svg viewBox="0 0 120 220" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 44c-6-3-11 2-8 8 3 5 12 4 13-3 1-8-9-13-17-9-10 5-10 18-1 24 10 6 25 0 26-13 1-11-9-20-20-19"/>
+    <path d="M33 50c-4 16 8 31 27 31s30-14 26-31"/><path d="M33 50c-6-6-4-16 4-19M86 50c6-6 4-16-4-19"/>
+    <path d="M45 76c-4 6-3 12 2 15M76 76c4 6 3 12-2 15"/>
+    <path d="M60 81c-2 26 3 52-3 82-3 16-1 34 4 52"/><path d="M59 104l-8-4M57 128l9-5M58 150l-8-3M57 176l8-4"/>
+    <path d="M58 116c-16-8-27 0-30 8 10 3 22 1 30-8zM44 120c-5 1-10 2-14 4"/>
+    <path d="M59 160c15-9 27-2 30 6-10 3-22 1-30-6zM73 164c5 0 10 1 14 2"/></svg>`,
+  moon:`<svg viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M88 22a46 46 0 1 0 30 76 38 38 0 1 1-30-76z"/>
+    <path d="M30 26l3 9 9 3-9 3-3 9-3-9-9-3 9-3z"/><path d="M112 30l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>
+    <path d="M24 92l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/><circle cx="58" cy="16" r="1.5"/><circle cx="128" cy="64" r="1.5"/><circle cx="16" cy="62" r="1.5"/></svg>`,
+  fly:`<svg viewBox="0 0 140 120" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 34v58M70 34c-3-10-9-16-15-18M70 34c3-10 9-16 15-18"/>
+    <path d="M68 46C52 18 18 12 12 28c-6 18 22 30 56 26z"/><path d="M72 46c16-28 50-34 56-18 6 18-22 30-56 26z"/>
+    <path d="M68 60c-24 0-42 12-36 26 6 13 26 6 36-16zM72 60c24 0 42 12 36 26-6 13-26 6-36-16z"/>
+    <path d="M30 30c8 2 18 8 26 16M110 30c-8 2-18 8-26 16"/></svg>`,
+  stars:`<svg viewBox="0 0 90 90" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 14l4 12 12 4-12 4-4 12-4-12-12-4 12-4z"/><path d="M28 46l2 7 7 2-7 2-2 7-2-7-7-2 7-2z"/><circle cx="80" cy="56" r="1.6"/><circle cx="44" cy="20" r="1.6"/></svg>`,
+};
+const tattooStars = () => `<div class="stars" aria-hidden="true">${TAT.stars}</div>`;
+const tattoo = (name, style) => `<div class="tattoo" style="${style}" aria-hidden="true">${TAT[name]}</div>`;
+
+/* ================= Hilfsfunktionen ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const dkey = (d=new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseKey = k => { const [y,m,d] = k.split("-").map(Number); return new Date(y,m-1,d); };
+const daysBetween = (a,b) => Math.round((parseKey(b) - parseKey(a)) / 864e5);
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const WD = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const MO = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const hourBlock = h => h < 5 ? "nachts" : h < 11 ? "morgens" : h < 14 ? "mittags" : h < 18 ? "nachmittags" : h < 22 ? "abends" : "nachts";
+
+/* ================= Inhalte ================= */
+const CATS = {
+  start:{name:"Guter Start", col:"var(--butter)"},
+  kueche:{name:"Küche", col:"var(--peach)"},
+  waesche:{name:"Wäsche", col:"var(--sky)"},
+  ordnung:{name:"Ordnung", col:"var(--sage)"},
+  essen:{name:"Essen", col:"var(--peach)"},
+  ich:{name:"Für dich", col:"var(--blush)"},
+  papier:{name:"Papierkram", col:"var(--sky)"},
+};
+// level: 1 = geht auch an schweren Tagen, 3 = braucht Kraft. rhythm: ungefähr alle X Tage
+const TASKS = [
+  {id:"t_light", cat:"start", text:"Vorhang auf, Fenster auf", mini:"Nur den Vorhang auf", level:1, rhythm:1, morning:true},
+  {id:"t_coffee", cat:"start", text:"Kaffee oder Tee in Ruhe trinken", mini:"Fünf Minuten nur für dich", level:1, rhythm:1, morning:true},
+  {id:"t_outfit", cat:"start", text:"Ein Outfit anziehen, in dem du dich magst", mini:"Lieblingsoberteil reicht", level:1, rhythm:2},
+  {id:"t_shower", cat:"start", text:"Duschen", mini:"Gesicht waschen und eincremen", level:2, rhythm:2},
+  {id:"t_5dish", cat:"kueche", text:"5 Teile in die Spüle oder Spülmaschine", mini:"Eine Tasse wegräumen", level:1, rhythm:1},
+  {id:"t_dishout", cat:"kueche", text:"Spülmaschine ausräumen", mini:"Nur das Besteck", level:2, rhythm:2},
+  {id:"t_counter", cat:"kueche", text:"Arbeitsfläche abwischen", mini:"Nur die Stelle neben dem Herd", level:2, rhythm:2},
+  {id:"t_trash", cat:"kueche", text:"Müll rausbringen", mini:"Müllbeutel zubinden und an die Tür stellen", level:2, rhythm:3},
+  {id:"t_fridge", cat:"kueche", text:"Eine abgelaufene Sache aus dem Kühlschrank", mini:"Nur reingucken", level:1, rhythm:7},
+  {id:"t_wash", cat:"waesche", text:"Eine Maschine Wäsche anstellen", mini:"Wäsche in einen Korb sammeln", level:2, rhythm:3},
+  {id:"t_hang", cat:"waesche", text:"Wäsche aufhängen", mini:"Nur 10 Teile aufhängen", level:2, rhythm:3},
+  {id:"t_fold", cat:"waesche", text:"Wäsche zusammenlegen", mini:"Nur die Socken sortieren", level:2, rhythm:4},
+  {id:"t_5things", cat:"ordnung", text:"5 Dinge an ihren Platz bringen", mini:"Ein Ding an seinen Platz", level:1, rhythm:1},
+  {id:"t_table", cat:"ordnung", text:"Den Tisch freiräumen", mini:"Nur eine Ecke vom Tisch", level:2, rhythm:2},
+  {id:"t_vacuum", cat:"ordnung", text:"Staubsaugen in einem Raum", mini:"2 Minuten nur im Flur", level:3, rhythm:4},
+  {id:"t_sink", cat:"ordnung", text:"Waschbecken im Bad abwischen", mini:"Nur den Wasserhahn", level:2, rhythm:4},
+  {id:"t_bed", cat:"ordnung", text:"Bettwäsche wechseln", mini:"Nur den Kissenbezug", level:3, rhythm:14},
+  {id:"t_eat", cat:"essen", text:"Dir was Leckeres machen", mini:"Lieblingssnack zählt", level:1, rhythm:1},
+  {id:"t_mealplan", cat:"essen", text:"Essen für die Woche planen", mini:"Nur 3 Gerichte aufschreiben", level:2, rhythm:7},
+  {id:"t_list", cat:"essen", text:"Einkaufsliste schreiben", mini:"Nur 3 Sachen aufschreiben", level:1, rhythm:4},
+  {id:"t_shop", cat:"essen", text:"Einkaufen gehen", mini:"Online bestellen zählt auch", level:3, rhythm:4},
+  {id:"t_cook", cat:"essen", text:"Etwas Einfaches kochen", mini:"Brot schmieren zählt", level:2, rhythm:1},
+  {id:"t_air", cat:"ich", text:"5 Minuten raus an die Luft", mini:"Am offenen Fenster tief atmen", level:1, rhythm:1},
+  {id:"t_song", cat:"ich", text:"Ein Lieblingslied laut hören", mini:"Den Refrain reicht", level:1, rhythm:1},
+  {id:"t_text", cat:"ich", text:"Jemandem schreiben, den du magst", mini:"Ein Herz an Lara reicht", level:1, rhythm:3},
+  {id:"t_care", cat:"ich", text:"Haare oder Gesicht pflegen", mini:"Lippenpflege drauf", level:1, rhythm:2},
+  {id:"t_call", cat:"papier", text:"Einen Anruf oder Termin erledigen", mini:"Nur die Nummer raussuchen", level:2, rhythm:7},
+  {id:"t_drawer", cat:"ordnung", text:"Eine Schublade ausmisten", mini:"5 Sachen rausnehmen, die weg können", level:2, rhythm:7},
+  {id:"t_shoes", cat:"ordnung", text:"Schuhe im Flur ordnen", mini:"Nur deine eigenen Schuhe", level:1, rhythm:4},
+  {id:"t_mirror", cat:"ordnung", text:"Spiegel im Bad putzen", mini:"Einmal drüberwischen", level:1, rhythm:7},
+  {id:"t_letter", cat:"papier", text:"Einen Brief öffnen", mini:"Briefe auf einen Stapel legen", level:2, rhythm:7},
+];
+const STRUGGLES = [
+  {k:"start", label:"In den Tag starten"}, {k:"kueche", label:"Küche & Abwasch"}, {k:"waesche", label:"Wäsche"},
+  {k:"ordnung", label:"Aufräumen"}, {k:"essen", label:"Essen & Einkaufen"}, {k:"ich", label:"Mich um mich kümmern"},
+  {k:"papier", label:"Post & Papierkram"}
+];
+const NIGHT = "Gute-Nacht-Routine";
+const MAMA = ["Zusammen gelacht","Zusammen getanzt","Draußen unterwegs","Zusammen gebacken","Gespielt","Gekuschelt","Was Neues entdeckt","Foto gemacht"];
+const MAMA_IDEAS = [
+  "Eiskönigin-Tanzparty im Wohnzimmer. Wer zuerst einfriert, verliert.",
+  "Zusammen Brot backen: Ella darf kneten, du darfst den Teig retten.",
+  "Friseursalon spielen: Ella frisiert dich. Danach brauchst du vielleicht einen Profi. Ach, du bist ja einer.",
+  "Stopptanz: Musik an, Musik aus, alle erstarren wie Eisskulpturen.",
+  "Schneeflocken aus Papier falten und schneiden. Elsa wäre neidisch.",
+  "Zusammen Kissen und Decken zu einer Burg stapeln.",
+  "Draußen Blätter sammeln: Wer findet das schönste?",
+  "Konzert in der Küche: Topf, Löffel, und Ella ist der Star.",
+  "Verkleiden: Heute seid ihr zwei Prinzessinnen mit Glitzer.",
+  "Ein Lied laut zusammen singen. Schief ist erlaubt, schief ist sogar besser.",
+  "Selfie-Session mit lustigen Grimassen.",
+  "Zusammen Kekse oder kleine Brötchen formen, egal wie sie aussehen.",
+];
+const MOODS = [
+  {v:1, w:"Schwer", c:"var(--m1)"},{v:2, w:"Mau", c:"var(--m2)"},{v:3, w:"Okay", c:"var(--m3)"},
+  {v:4, w:"Gut", c:"var(--m4)"},{v:5, w:"Super", c:"var(--m5)"}];
+const TAGS = ["gut geschlafen","schlecht geschlafen","draußen gewesen","Kind war anstrengend","Streit","gutes Gespräch","allein gefühlt","Kopfschmerzen","produktiv","gegessen","Periode","Besuch"];
+
+const FUN_DONE = [
+  "Erledigt. Die Wohnung hat gerade leise „danke“ gesagt.",
+  "Zack. Du bist offiziell produktiver als 90 % aller Katzen.",
+  "Boom. Das hätte nicht mal ein Superheld schneller gemacht.",
+  "Geschafft. Die Couch ist ein bisschen eifersüchtig.",
+  "Eine Blüte mehr. Dein Garten flippt aus.",
+  "Haken dran. Applaus vom unsichtbaren Publikum.",
+  "Das war stark. Ernsthaft, kleine Dinge sind die großen.",
+  "Erledigt. Hiermit verleihe ich dir den Orden für Alltagsheldentum.",
+  "Gemacht! Dein zukünftiges Ich schickt dir einen Luftkuss.",
+];
+const FUN_MINI = [
+  "Die Mini-Version zählt genauso. Das ist keine Ausrede, das ist Strategie.",
+  "Klein angefangen ist halb gewonnen. Volle Blüte für dich.",
+  "Mini erledigt, Maxi Respekt.",
+];
+const FUN_LOW = [
+  "Heute ist Sparmodus. Wie ein Handy auf 3 %. Völlig okay.",
+  "Wenig Kraft heute. Dann machen wir es uns leicht. Eine Sache reicht.",
+  "Schwerer Tag? Dann zählt heute jede Kleinigkeit doppelt.",
+];
+const FUN_SKIP = ["Kein Problem. Die Aufgabe ist nicht beleidigt.","Weg damit. Die kommt wieder, wenn's besser passt.","Alles klar, nächste. Wir sind hier nicht beim Amt."];
+const LARA_LINES = [
+  "Du schaffst so viel mehr, als du denkst. Ich seh das.",
+  "Du bist die stärkste Frau, die ich kenne. Ernsthaft.",
+  "Ich bin so stolz auf dich. Auch an den Tagen, an denen du es selbst nicht bist.",
+  "Ella hat die coolste Mama mit den coolsten Tattoos.",
+  "Du hast schon viel Schwereres geschafft als einen Wäscheberg. Viel Schwereres.",
+  "Mal schauen, was wird? Ich weiß es schon: Du rockst das.",
+  "Ich glaub an dich. Immer schon. Wird sich auch nicht ändern.",
+  "Wenn du denkst, du hast nichts geschafft: Guck in deinen Garten. Der lügt nicht.",
+  "Kleiner Reminder von deiner Lieblingsschwester: Du bist toll. Ende der Durchsage.",
+  "Ich hab dich lieb. Einfach so. Ohne Bedingungen.",
+  "Pausen sind keine Niederlagen. Auch die stärksten Frauen schlafen mal.",
+  "Du bist stärker als jeder schlechte Tag.",
+  "Du backst jetzt Brot. Ich kann nicht mal Toast. Nur so.",
+  "Weißt du, was ich an dir bewundere? Dass du nach allem immer noch so lieb zu anderen bist.",
+  "Sweetie, ich hab dich lieb. Diesmal nüchtern.",
+];
+// Längere Briefe. Jeden Tag, an dem sie die App öffnet, kommt ein neuer dazu.
+// {name} und {kid} werden automatisch ersetzt.
+const LARA_LETTERS = [
+  null, // Brief 1 = loveNote aus der Konfiguration
+  "Weißt du, was ich an dir am meisten bewundere? Du hast so viel durchgemacht, und trotzdem bist du immer noch lieb zu anderen Menschen. Das schaffen nicht viele.\nDu bist nicht hart geworden. Du bist stark geworden. Das ist ein Unterschied.",
+  "Offizielle Mitteilung der Schwester-Behörde:\nHiermit wird amtlich festgestellt, dass {name} viel mehr schafft, als sie denkt. Widerspruch ist zwecklos und wird nicht bearbeitet.\nGezeichnet, Laraline. Stempel. Unterschrift.",
+  "Ich seh, wie {kid} dich anguckt, wenn du ihr abends vorliest. Für sie bist du die ganze Welt.\nIhr zwei habt euer eigenes kleines Ritual, eure eigene kleine Welt. Und die hast du gebaut. Ganz allein.",
+  "Du hast dich aus einer Situation rausgekämpft, die dir nicht gutgetan hat, und mit {kid} neu angefangen.\nWeißt du eigentlich, wie viel Mut das braucht? Viele bleiben, weil Gehen zu schwer ist. Du bist gegangen. Das vergess ich dir nie.",
+  "Wir waren so lange getrennt. Ich in Ägypten, du in Deutschland. Sieben Jahre.\nUnd trotzdem hat es sich beim Wiedersehen angefühlt, als wär kaum Zeit vergangen. Ich bin so froh, dass du wieder in meiner Nähe bist.",
+  "Weißt du noch, als wir mit Mama alle unter einem Dach gewohnt haben? Chaos. Streit um Kleinkram. Und trotzdem eine meiner schönsten Zeiten.\nUnd jetzt wohnst du genau da wieder. Die Wände kennen uns schon. Die haben einiges gehört.",
+  "Du kannst Haare schneiden. Du backst jetzt dein eigenes Brot. Du ziehst ein kleines Mädchen groß, das tanzt und singt und lacht.\nUnterschätz nie, wie viel in deinen Händen steckt, {name}.",
+  "Du fragst dich vielleicht manchmal, wie es weitergeht.\nMal schauen, was wird.\nWas wird?\nIch sag's dir: Es wird gut. Nicht alles auf einmal. Aber Stück für Stück.",
+  "Wenn dein Kopf dir erzählt, du hättest nichts geschafft: Glaub ihm nicht alles. Der übertreibt gern.\nGuck lieber in deinen Garten. Da steht schwarz auf rosa, was du alles machst.",
+  "Kleine Erinnerung: Du musst dir deinen Wert nicht erarbeiten. Nicht mit sauberer Küche, nicht mit abgehakten Listen.\nDu bist wertvoll, einfach weil du du bist. Die Blüten hier sind nur Bonus.",
+  "Wenn dein Leben eine Serie wäre, wärst du nicht die, die gerettet werden muss.\nDu wärst die, die alle unterschätzen und die am Ende allen zeigt, was sie draufhat. Staffel eins bis acht.",
+  "Ich hab dich lieb. Und das sag ich dir nüchtern, nicht wie damals mit „Sweetie, ich liebe dich“.\nÜber den Abend reden wir übrigens nicht mehr. Nie wieder. Okay, einmal im Jahr.",
+  "Wenn ein Tag schiefgeht, ist nicht alles kaputt. Morgen ist ein neuer Tag, und dein Garten wartet einfach auf dich.\nEr ist nicht beleidigt. Ich auch nicht. Niemals.",
+  "Fun Fact: Laut einer wissenschaftlichen Studie (durchgeführt von mir, Stichprobe: eine Schwester) bist du die Beste.\nErgebnis: eindeutig. Peer-Review: überflüssig.",
+  "Heute mal eine Aufgabe von mir: Guck in den Spiegel und sag „Ich bin ganz schön badass.“\nMit den ganzen Tattoos glaubt dir das eh jeder. Jetzt musst nur noch du es glauben.",
+  "Du darfst auch mal nichts machen. Ausruhen ist keine Faulheit.\nSelbst dein Handy muss an die Steckdose, und das beschwert sich nicht halb so schön wie du.",
+  "Ich bin so stolz auf dich, {name}. Ich sag es nicht oft genug, deshalb steht es jetzt hier.\nSchwarz auf weiß. Okay, rosa auf weiß. Mit Glitzer, wenn ich könnte.",
+  "Egal was passiert, egal was du gerade über dich denkst: Ich hab dich lieb. Punkt.\nDaran ändert kein Tag und kein Fehler irgendwas.",
+];
+
+const LAUGHS = [
+  "Damon Salvatore hat über 150 Jahre gebraucht, um ein besserer Mensch zu werden. Du darfst dir für die Spülmaschine also ruhig auch Zeit lassen.",
+  "Vampire müssen eingeladen werden, bevor sie reinkommen. Staubmäuse leider nicht. Unfair.",
+  "Elena konnte sich nie zwischen zwei Brüdern entscheiden. Du musst dich heute nur zwischen Wäsche und Couch entscheiden. Viel Glück.",
+  "Wer kein Spiegelbild hat, muss nie den Badspiegel putzen. Ich sag ja nur: Vampire haben's leicht.",
+  "Hausarbeit ist wie ein Vampir: Sie kommt immer wieder. Also Pflock rein und ab auf die Couch.",
+  "Gegen schlechte Laune hilft kein Eisenkraut. Aber eine Folge Mystic Falls ist schon ziemlich nah dran.",
+  "„Was machst du heute?“ „Mal schauen, was wird.“ „Was wird?“ „Genau das ist die Frage.“",
+  "Tagesplan: Mal schauen, was wird. Status: Es wird. Irgendwas wird immer.",
+  "Gnädige Frau, haben Sie heute schon Ihre Spülmaschine beehrt? Die Teller bitten um eine Audienz.",
+  "Haben Sie heute schon an sich gedacht? Nein? Dann wird das jetzt nachgeholt, Frau Kim.",
+  "Fun Fact: Manche Leute sagen betrunken „Sweetie, ich liebe dich“ zu Menschen, die sie kaum kennen. Ich nenne keine Namen. Gezeichnet, Laraline.",
+  "Du kannst Haare schneiden UND Brot backen. Du bist im Grunde eine Bäckerei mit angeschlossenem Salon. Fehlt nur noch das Schild.",
+  "Brot backen heißt eigentlich nur: Hefe davon überzeugen, dass das Leben schön ist. Und du schaffst das. Respekt.",
+  "Mit einer Dreijährigen zu verhandeln ist härter als jedes Bewerbungsgespräch. Du machst das täglich. Unbezahlt. Legende.",
+  "Ein Kleinkind verwüstet in 3 Sekunden, was du in 30 Minuten aufgeräumt hast. Das ist keine Niederlage, das ist Physik.",
+  "Wer eine Dreijährige hat, die Elsa liebt, hat täglich Gratis-Konzerte. VIP-Status, sozusagen.",
+  "Kaffee ist kein Ersatz für Schlaf. Aber er tut so, und wir spielen alle mit.",
+  "Statistisch gesehen hast du 100 % deiner schlimmsten Tage überlebt. Ziemlich starke Quote.",
+  "Wenn das Leben dir Zitronen gibt: Brot backen. Hat nichts mit Zitronen zu tun, aber Brot ist einfach besser.",
+  "Die Wäsche wird nicht weglaufen. Leider. Das hab ich jahrelang getestet.",
+  "Eine Frau mit so vielen Tattoos lässt sich doch von einem Abwasch nicht einschüchtern. Oder?",
+  "Mystic Falls hatte Vampire, Werwölfe und Hexen. Du hast eine Dreijährige. Ehrlich gesagt bist du härter drauf.",
+];
+const DISTRESS = /(will nicht mehr leben|nicht mehr leben|mich umbringen|sterben will|will sterben|mich verletzen|ritzen|suizid|selbstmord)/i;
+
+/* ================= Speicher ================= */
+const KEY = "bloom.v1";
+const freshState = () => ({
+  v:1, profile:null,
+  settings:{signature:BLOOM_CONFIG.signature, laraName:BLOOM_CONFIG.laraName, laraPhone:BLOOM_CONFIG.laraPhone, loveNote:BLOOM_CONFIG.loveNote, aiOn:false, aiUrl:BLOOM_CONFIG.aiUrl, lastBackup:null, lastBackupNudge:null},
+  days:{}, checkins:[], events:[], custom:[], hidden:[], totalBlooms:0,
+  rewards:[
+    {id:"r1", title:"Vampire-Diaries-Abend mit Lieblingssnacks", need:15, redeemed:null},
+    {id:"r2", title:"Etwas mit Glitzer für dich", need:40, redeemed:null},
+    {id:"r3", title:"Lara lädt dich auf einen Kaffee ein", need:70, redeemed:null},
+    {id:"r4", title:"Große Überraschung von Lara", need:120, redeemed:null},
+  ],
+  appts:[],
+  letters:{}, chat:[], lastOpen:null, notesUnlocked:0, newNote:false, lastNoteDay:null, current:null, firstDay:dkey()
+});
+let S;
+function load(){
+  try { const raw = localStorage.getItem(KEY); S = raw ? Object.assign(freshState(), JSON.parse(raw)) : freshState(); }
+  catch(e){ S = freshState(); }
+  S.settings = Object.assign(freshState().settings, S.settings || {});
+  if(!Array.isArray(S.appts)) S.appts = [];
+  (S.rewards||[]).forEach(r => { if(/Lara passt auf/.test(r.title)) r.title = "Ein Abend ganz für dich"; });
+  if(!S.settings.signature) S.settings.signature = BLOOM_CONFIG.signature || BLOOM_CONFIG.laraName;
+  if(!S.settings.aiUrl && BLOOM_CONFIG.aiUrl) S.settings.aiUrl = BLOOM_CONFIG.aiUrl;
+  if(!S.settings.laraPhone && BLOOM_CONFIG.laraPhone) S.settings.laraPhone = BLOOM_CONFIG.laraPhone;
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){ toast("Speichern hat nicht geklappt. Mach bitte ein Backup unter „Ich“."); } }
+function today(){ const k = dkey(); if(!S.days[k]) S.days[k] = {energy:null, done:[], skips:[], mama:[], blooms:0, bonus:0}; return S.days[k]; }
+function allTasks(){ return TASKS.concat(S.custom).filter(t => !S.hidden.includes(t.id)); }
+function taskById(id){ return TASKS.concat(S.custom).find(t => t.id === id); }
+
+function addBloom(n=1, dayObj=today()){ dayObj.blooms += n; S.totalBlooms += n; }
+
+/* ================= Lern-Engine (lokal) ================= */
+function taskStats(id){
+  const ev = S.events.filter(e => e.id === id);
+  const done = ev.filter(e => e.a === "done"); const skip = ev.filter(e => e.a === "skip");
+  const hours = done.map(e => e.h);
+  const last = done.length ? done[done.length-1].d : null;
+  return {done:done.length, skip:skip.length, hours, last, recentSkips: ev.slice(-4).filter(e=>e.a==="skip").length};
+}
+function shouldGoMini(t){
+  const st = taskStats(t.id);
+  return (st.skip >= 3 && st.skip > st.done) || st.recentSkips >= 2;
+}
+function scoreTask(t, energy, now=new Date()){
+  const st = taskStats(t.id); const k = dkey(now);
+  let s = 0;
+  // Fälligkeit nach Rhythmus
+  if(st.last){ const gap = daysBetween(st.last, k); s += Math.min(gap / t.rhythm, 3) * 2; }
+  else s += 2.5;
+  // Lieblingszeit: Wie oft wurde die Aufgabe in diesem Tagesabschnitt erledigt?
+  const blk = hourBlock(now.getHours());
+  if(st.hours.length){ const same = st.hours.filter(h => hourBlock(h) === blk).length; s += (same / st.hours.length) * 2; }
+  // Erfolgsquote
+  const tot = st.done + st.skip; if(tot) s += (st.done / tot) * 1.5;
+  // Schwerpunkte aus dem Onboarding
+  if(S.profile && S.profile.struggles.includes(t.cat)) s += 0.8;
+  // Morgens: erst ankommen
+  if(t.morning && now.getHours() < 12) s += 1.5;
+  if(t.morning && now.getHours() >= 15) s -= 3;
+  // Bei wenig Energie leichte Aufgaben bevorzugen
+  if(energy === 1) s -= (t.level - 1) * 2;
+  s += Math.random() * 0.6;
+  return s;
+}
+function nextTask(excludeIds=[]){
+  const d = today(); const energy = d.energy || 2;
+  const doneToday = d.done.map(x => x.id); const skipped = d.skips;
+  let pool = allTasks().filter(t => t.level <= Math.max(energy,1) + (energy===3?0:0) && !doneToday.includes(t.id) && !excludeIds.includes(t.id));
+  // Rhythmus: nicht zu früh wieder (außer tägliche)
+  pool = pool.filter(t => { const st = taskStats(t.id); return !st.last || t.rhythm <= 1 || daysBetween(st.last, dkey()) >= Math.max(1, Math.floor(t.rhythm*0.6)); });
+  let fresh = pool.filter(t => !skipped.includes(t.id));
+  if(!fresh.length) fresh = pool;
+  if(!fresh.length) return null;
+  fresh.sort((a,b) => scoreTask(b,energy) - scoreTask(a,energy));
+  const t = fresh[0];
+  return {id:t.id, mini: energy === 1 || shouldGoMini(t)};
+}
+const GOAL = {1:1, 2:3, 3:5};
+
+/* ---------- Muster erkennen ---------- */
+function insights(){
+  const out = [];
+  const ci = S.checkins;
+  const doneEv = S.events.filter(e => e.a === "done");
+  if(doneEv.length >= 6){
+    const blocks = {}; doneEv.forEach(e => { const b = hourBlock(e.h); blocks[b] = (blocks[b]||0)+1; });
+    const best = Object.entries(blocks).sort((a,b)=>b[1]-a[1])[0];
+    out.push({icon:"clock", col:"var(--butter)", t:`Deine starke Zeit ist ${best[0]}`, b:`Da hast du bisher die meisten Sachen geschafft. Ich schlage dir dann gezielt etwas vor.`});
+  }
+  if(ci.length >= 5){
+    const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+    const withTag = (tag) => ci.filter(c => c.tags.includes(tag)).map(c=>c.mood);
+    const without = (tag) => ci.filter(c => !c.tags.includes(tag)).map(c=>c.mood);
+    const checks = [
+      ["draußen gewesen", "An Tagen, an denen du draußen warst, ging es dir spürbar besser. Frische Luft ist dein Cheatcode.", false, "Rausgehen tut dir gut"],
+      ["gutes Gespräch", "Gute Gespräche heben deine Stimmung deutlich. Menschen tun dir gut.", false, "Reden hilft dir"],
+      ["gut geschlafen", "Wenn du gut schläfst, ist deine Stimmung besser. Schlaf ist bei dir kein Luxus, sondern Medizin.", false, "Schlaf ist dein Superpower"],
+      ["schlecht geschlafen", "Nach schlechten Nächten ist es schwerer. Plan dann lieber einen Mini-Tag ein, ganz ohne schlechtes Gewissen.", true, "Nach kurzen Nächten: Sparmodus"],
+      ["allein gefühlt", `Wenn du dich allein fühlst, sinkt die Stimmung. Genau dann: ${S.settings.laraName} anrufen. Ernsthaft.`, true, "Allein ist schwerer"],
+    ];
+    for(const [tag, txt, neg, title] of checks){
+      const a = withTag(tag), b = without(tag);
+      if(a.length >= 2 && b.length >= 2){
+        const diff = avg(a) - avg(b);
+        if((!neg && diff >= 0.6) || (neg && diff <= -0.6)) out.push({icon: neg?"moon":"leaf", col: neg?"var(--sky)":"var(--sage)", t: title, b: txt});
+      }
+    }
+    // Stimmung und Erledigtes
+    const byDay = {}; ci.forEach(c => { const k = dkey(new Date(c.ts)); (byDay[k] = byDay[k]||[]).push(c.mood); });
+    const pairs = Object.entries(byDay).map(([k,m]) => [avg(m), (S.days[k]?.done.length||0)]);
+    const act = pairs.filter(p=>p[1]>=1).map(p=>p[0]), lazy = pairs.filter(p=>p[1]===0).map(p=>p[0]);
+    if(act.length >= 2 && lazy.length >= 2 && avg(act) - avg(lazy) >= 0.5)
+      out.push({icon:"spark", col:"var(--blush)", t:"Schon eine Kleinigkeit hilft", b:"An Tagen, an denen du nur eine Sache erledigt hast, war deine Stimmung höher als an Tagen ohne."});
+  }
+  // Was oft liegen bleibt
+  const skipCount = {}; S.events.filter(e=>e.a==="skip").forEach(e => skipCount[e.id] = (skipCount[e.id]||0)+1);
+  const hard = Object.entries(skipCount).filter(([id,n]) => n >= 3).sort((a,b)=>b[1]-a[1])[0];
+  if(hard){ const t = taskById(hard[0]); if(t) out.push({icon:"small", col:"var(--peach)", t:`„${t.text}“ ist gerade zäh`, b:`Ich zeig dir dafür erstmal die Mini-Version: „${t.mini}“. Kleiner Einstieg, gleiche Blüte.`}); }
+  // Wochentag
+  const wdCount = {}; Object.entries(S.days).forEach(([k,d]) => { if(d.done.length){ const w = parseKey(k).getDay(); wdCount[w] = (wdCount[w]||0) + d.done.length; }});
+  const wds = Object.entries(wdCount); if(wds.length >= 4){ const b = wds.sort((a,b)=>b[1]-a[1])[0]; out.push({icon:"sun", col:"var(--butter)", t:`${WD[b[0]]} ist dein Macher-Tag`, b:`An diesem Wochentag schaffst du am meisten. Größere Sachen passen da gut hin.`}); }
+  return out;
+}
+
+/* ---------- Wochenbrief (lokal) ---------- */
+function weekKey(d=new Date()){ const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const day = t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day); const y0 = new Date(Date.UTC(t.getUTCFullYear(),0,1)); return `${t.getUTCFullYear()}-KW${Math.ceil(((t-y0)/864e5+1)/7)}`; }
+function lastNDays(n){ const arr=[]; for(let i=n-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); arr.push(dkey(d)); } return arr; }
+function weekStats(){
+  const ks = lastNDays(7);
+  const days = ks.map(k => ({k, d:S.days[k]})).filter(x => x.d);
+  const done = days.reduce((a,x)=>a+x.d.done.length,0);
+  const mama = days.reduce((a,x)=>a+x.d.mama.length,0);
+  const blooms = days.reduce((a,x)=>a+x.d.blooms,0);
+  const active = days.filter(x => x.d.done.length || x.d.mama.length).length;
+  const best = days.slice().sort((a,b)=> (b.d.done.length+b.d.mama.length)-(a.d.done.length+a.d.mama.length))[0];
+  const ci = S.checkins.filter(c => ks.includes(dkey(new Date(c.ts))));
+  const moodAvg = ci.length ? ci.reduce((a,c)=>a+c.mood,0)/ci.length : null;
+  const tagCount = {}; ci.forEach(c=>c.tags.forEach(t=>tagCount[t]=(tagCount[t]||0)+1));
+  const topTag = Object.entries(tagCount).sort((a,b)=>b[1]-a[1])[0];
+  return {done, mama, blooms, active, best, moodAvg, topTag, ci};
+}
+function localLetter(){
+  const w = weekStats(); const name = S.profile?.name || "du"; const kid = S.profile?.kid;
+  const p = [];
+  if(w.done + w.mama === 0){
+    p.push(`Liebe ${name}, diese Woche war eher still hier. Und weißt du was? Das ist okay. Manche Wochen sind zum Überleben da, nicht zum Glänzen.`);
+    p.push(`Nächste Woche reicht eine einzige Sache. Vielleicht einfach: ein Glas Wasser. Das ist der ganze Plan.`);
+  } else {
+    p.push(`Liebe ${name}, du hast diese Woche ${w.done} ${w.done===1?"Sache":"Sachen"} erledigt${w.mama?` und ${w.mama} schöne ${w.mama===1?"Moment":"Momente"} mit ${kid||"deiner Tochter"} festgehalten`:""}. Das sind ${w.blooms} neue Blüten in deinem Garten.`);
+    if(w.best) p.push(`Dein stärkster Tag war ${WD[parseKey(w.best.k).getDay()]}. Was war da anders? Merk dir das ruhig.`);
+    p.push(`Und falls dein Kopf dir erzählt, du hättest nichts geschafft: Die Zahlen hier sagen was anderes. Schwarz auf rosa.`);
+  }
+  if(w.moodAvg !== null){
+    p.push(w.moodAvg >= 3.5 ? "Deine Stimmung war im Schnitt richtig gut. Genieß das, du hast es dir verdient."
+      : w.moodAvg >= 2.5 ? "Deine Stimmung war gemischt. Ein bisschen Auf und Ab gehört dazu, bei allen Menschen."
+      : "Es war eine schwere Woche für dich. Danke, dass du trotzdem reingeschaut hast. Das ist mutiger, als es sich anfühlt.");
+  }
+  if(w.topTag) p.push(`Am häufigsten hast du „${w.topTag[0]}“ eingetragen.`);
+  const ins = insights(); if(ins[0]) p.push(`Mir ist aufgefallen: ${ins[0].b}`);
+  p.push(`Für nächste Woche: nicht mehr machen, nur ein bisschen sanfter mit dir sein.`);
+  return p;
+}
+
+/* ================= UI-Grundgerüst ================= */
+let TAB = "heute";
+let calMonth = new Date(); calMonth.setDate(1);
+function toast(t, ms=3200){ const el=$("#toast"); el.textContent=t; el.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("on"), ms); }
+function openSheet(html, onMount){
+  const sh = $("#sheet"); sh.innerHTML = `<div class="grab"></div><button class="sheet-close" aria-label="Schließen" data-close>${ic.x}</button>${html}`;
+  sh.scrollTop = 0; $("#scrim").classList.add("on"); sh.classList.add("on");
+  sh.querySelectorAll("[data-close]").forEach(b => b.onclick = closeSheet);
+  onMount && onMount(sh);
+}
+function closeSheet(){ $("#sheet").classList.remove("on"); $("#scrim").classList.remove("on"); clearInterval(breathTimer); }
+$("#scrim").onclick = closeSheet;
+
+function flowerSVG(seed, size=40){
+  const pal = ["#F2A7BC","#E7799A","#F6C3A7","#F3DFA6","#F7B6C8","#E994AE","#F9CDD8","#F0A389","#D45F82"];
+  const r = (n) => { const x = Math.sin(seed*9301+n*49297)*233280; return x - Math.floor(x); };
+  const col = pal[Math.floor(r(1)*pal.length)]; const petals = 5 + Math.floor(r(2)*3);
+  const stem = 14 + r(3)*10; const rot = r(4)*60;
+  let p = "";
+  for(let i=0;i<petals;i++){ const a = rot + i*360/petals; p += `<ellipse cx="20" cy="${12}" rx="5.4" ry="8.5" fill="${col}" opacity=".92" transform="rotate(${a} 20 20)"/>`; }
+  return `<svg viewBox="0 0 40 ${40+stem}" width="${size}" style="--d:${(seed%10)*40}ms" aria-hidden="true">
+    <path d="M20 26 C ${20 + (r(5)-.5)*8} ${30+stem/2}, 20 ${34+stem/2}, 20 ${40+stem}" stroke="#A9C3A8" stroke-width="2" fill="none"/>
+    <ellipse cx="${r(6)>.5?25:15}" cy="${30+stem/2}" rx="4.5" ry="2.2" fill="#BFD4BE" transform="rotate(${r(6)>.5?-30:30} 20 ${30+stem/2})"/>
+    ${p}<circle cx="20" cy="20" r="4.2" fill="#F8E1A0"/><circle cx="20" cy="20" r="1.6" fill="#E8B865"/></svg>`;
+}
+
+function celebrate(text){
+  const c = document.createElement("div"); c.className = "celebrate";
+  c.innerHTML = `<div class="bloom">${flowerSVG(Date.now()%9973, 150)}</div>`; document.body.appendChild(c);
+  const cols = ["#F2A7BC","#E7799A","#F6C3A7","#F3DFA6","#F9CDD8"];
+  for(let i=0;i<18;i++){
+    const p = document.createElement("i"); p.className="petal";
+    p.style.left = "50%"; p.style.top = "45%"; p.style.background = pick(cols);
+    p.style.setProperty("--x", (Math.random()*320-160)+"px"); p.style.setProperty("--y", (Math.random()*320-120)+"px"); p.style.setProperty("--r", (Math.random()*540)+"deg");
+    p.style.animationDelay = (Math.random()*0.15)+"s"; document.body.appendChild(p); setTimeout(()=>p.remove(), 2100);
+  }
+  try{ navigator.vibrate && navigator.vibrate(25); }catch(e){}
+  setTimeout(()=>c.remove(), 1700);
+  if(text) setTimeout(()=>toast(text), 350);
+}
+
+function render(){
+  if(!S.profile){ renderOnboarding(0); return; }
+  const root = $("#root");
+  root.innerHTML = `<div class="app">${TAB==="heute"?viewToday():TAB==="garten"?viewGarden():viewMe()}</div>
+    <button class="fab ${TAB==="heute"?"":"hidden"}" id="fabCheck">${ic.pen} Check-in</button>
+    <nav class="tabs"><div class="in">
+      <button class="tab ${TAB==="heute"?"on":""}" data-tab="heute">${ic.sun}Heute</button>
+      <button class="tab ${TAB==="garten"?"on":""}" data-tab="garten">${ic.flower}Garten</button>
+      <button class="tab ${TAB==="ich"?"on":""}" data-tab="ich">${ic.user}Ich</button>
+    </div></nav>`;
+  root.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { TAB = b.dataset.tab; render(); window.scrollTo(0,0); });
+  const fab = $("#fabCheck"); if(fab) fab.onclick = () => openCheckin();
+  root.querySelectorAll("[data-sos]").forEach(b => b.onclick = openHelp);
+  if(TAB==="heute") bindToday(); else if(TAB==="garten") bindGarden(); else bindMe();
+}
+const topBar = (label) => `<div class="top"><span class="kicker">${label}</span><button class="sos" data-sos>${ic.leaf} Kurze Pause</button></div>`;
+
+/* ================= HEUTE ================= */
+function greeting(){
+  const h = new Date().getHours(); const n = esc(S.profile.name);
+  if(h < 5) return `Noch wach, <em>${n}</em>?`;
+  if(h < 11) return `Guten Morgen, <em>${n}</em>`;
+  if(h < 14) return `Hallo, <em>${n}</em>`;
+  if(h < 18) return `Schönen Nachmittag, <em>${n}</em>`;
+  return `Guten Abend, <em>${n}</em>`;
+}
+function viewToday(){
+  const d = today(); const now = new Date();
+  const dateLine = `${WD[now.getDay()].slice(0,2)} · ${now.getDate()}. ${MO[now.getMonth()]}`;
+  let html = tattoo("rose","right:-40px;top:30px;width:150px;transform:rotate(14deg)") + topBar(dateLine) + `<h1>${greeting()}</h1>`;
+
+  html += apptBlock();
+
+  if(S.comeback){ html += `<div class="lara-quote" style="background:var(--butter)"><p>Da bist du ja wieder. Der Garten hat extra auf dich gewartet.</p><span>+3 Willkommen-zurück-Blüten. Pausen gehören dazu.</span></div>`; }
+
+  if(S.newNote){
+    html += `<div class="lara-quote"><p>${S.notesUnlocked<=1?"Psst. Hier ist eine Nachricht":"Neue Post"} von ${esc(S.settings.laraName)} für dich.</p><button class="btn btn-primary" style="margin-top:8px;height:44px" id="openLetter">${ic.msg} Öffnen</button></div>`;
+  }
+  const memo = rememberLine();
+  if(memo) html += `<div class="card" style="background:var(--sage);box-shadow:none"><div class="small" style="font-weight:600;color:#4D6B52;letter-spacing:.08em;text-transform:uppercase">Weißt du noch?</div><p style="font-family:var(--serif);font-size:19px;margin:6px 0 0;line-height:1.3">${memo}</p></div>`;
+
+  html += `<div class="ink">${tattooStars()}<div class="lbl">Kurz lachen</div><p>${esc(SESSION_LAUGH)}</p></div>`;
+
+  if(!d.energy){
+    html += `<p class="sub">Erstmal ehrlich: Wie viel Kraft hast du heute?</p>
+      <div class="energy">${[1,2,3].map(v=>`<button class="en" data-en="${v}"><div class="bars">${[1,2,3].map(i=>`<i class="${i<=v?"f":""}" style="height:${8+i*6}px"></i>`).join("")}</div><b>${["Wenig","Mittel","Gut"][v-1]}</b><span>${["1 Mini-Sache","3 Sachen","5 Sachen"][v-1]}</span></button>`).join("")}</div>
+      <p class="small muted" style="margin-top:12px">Es gibt keine falsche Antwort. Der Tag passt sich dir an, nicht umgekehrt.</p>`;
+    return html + mamaBlock();
+  }
+
+  const goal = GOAL[d.energy]; const n = d.done.length; const reached = n >= goal;
+  html += `<p class="sub">${d.energy===1 ? pick(FUN_LOW) : reached ? "Tagesziel geschafft. Alles ab jetzt ist Bonus." : `Heute ${goal} ${goal===1?"Sache":"Sachen"}. ${n?`${n} hast du schon.`:"Eine nach der anderen."}`}
+    <button class="small" style="color:var(--rose-deep);font-weight:600;margin-left:4px" id="changeEnergy">Kraft ändern</button></p>`;
+
+  html += `<div class="progress" style="margin-bottom:14px">${Array.from({length:Math.max(goal,n)},(_,i)=>`<i>${i<n?flowerSVG(i+7, 28):""}</i>`).join("")}</div>`;
+
+  if(!S.current || d.done.some(x=>x.id===S.current.id) || !taskById(S.current.id) || S.current.day !== dkey()){
+    const nt = nextTask(); S.current = nt ? Object.assign(nt,{day:dkey()}) : null; save();
+  }
+  const c = S.current;
+  if(c){
+    const t = taskById(c.id);
+    html += `<div class="card one">
+      <div class="cat">${reached?"Bonus · ":""}${CATS[t.cat]?.name || "Eigene Aufgabe"}</div>
+      <div class="task">${esc(c.mini && t.mini ? t.mini : t.text)}</div>
+      <div class="hint">${c.mini && t.mini ? `Mini-Version von „${esc(t.text)}“. Zählt voll.` : t.mini ? "Zu viel? Tipp auf „Kleiner“." : ""}</div>
+      <button class="btn btn-primary btn-block" id="doneBtn">${ic.check} Erledigt</button>
+      <div class="actions">
+        ${t.mini && !c.mini ? `<button id="smallerBtn">${ic.small.replace('<svg','<svg width="16" height="16" style="vertical-align:-3px"')} Kleiner</button>`:""}
+        <button id="skipBtn">${ic.shuffle.replace('<svg','<svg width="16" height="16" style="vertical-align:-3px"')} Andere</button>
+      </div></div>`;
+  } else {
+    html += `<div class="card one"><div class="task">Alles durch für heute.</div><div class="hint">Ernsthaft, mehr gibt's gerade nicht. Leg dich hin, du Legende.</div></div>`;
+  }
+  if(d.done.length){
+    html += `<h3>Heute geschafft</h3><div class="card" style="padding:6px 20px">${d.done.map(x=>`<div class="list-item"><span class="dot" style="background:var(--rose)"></span><span style="flex:1">${esc(x.text)}</span><span class="small muted">${pad(new Date(x.ts).getHours())}:${pad(new Date(x.ts).getMinutes())}</span></div>`).join("")}</div>`;
+  }
+  html += mamaBlock();
+  html += `<div class="lara-quote" style="margin-top:14px"><p>${esc(SESSION_LINE)}</p><span>${esc(S.settings.laraName)}</span></div>`;
+  if(new Date().getHours() >= 18) html += `<button class="btn btn-soft btn-block" id="eveningBtn" style="margin-bottom:20px">${ic.moon} Tagesabschluss</button>`;
+  return html;
+}
+function mamaBlock(){
+  const d = today(); const kid = S.profile.kid ? esc(S.profile.kid) : "deiner Tochter";
+  const idea = MAMA_IDEAS[(new Date().getDate()*3 + new Date().getMonth()) % MAMA_IDEAS.length];
+  const nightDone = d.mama.some(x=>x.label===NIGHT);
+  return `<h3>Schöne Momente mit ${kid}</h3><div class="card">
+    <button class="night ${nightDone?"on":""}" data-mama="${NIGHT}"><span class="ck">${nightDone?ic.check:ic.moon}</span><span style="flex:1"><b style="font-weight:600;display:block">${NIGHT}</b><span class="small" style="opacity:.75">${nightDone?"Gemacht. Schlaft gut, ihr zwei.":"Buch, Kuscheln, Licht aus. Tipp, wenn ihr fertig seid."}</span></span></button>
+    <p class="small muted" style="margin:0 0 12px">Was habt ihr heute Schönes erlebt? Jeder Moment wird eine Blüte.</p>
+    <div>${MAMA.map(m=>`<button class="chip ${d.mama.some(x=>x.label===m)?"on":""}" data-mama="${esc(m)}">${esc(m)}</button>`).join("")}</div>
+    <div class="row" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--line);align-items:flex-start">
+      <span style="color:var(--rose);flex:none">${ic.spark.replace('<svg','<svg width="20" height="20"')}</span>
+      <div><div class="small" style="font-weight:600">Idee für heute</div><div class="small muted">${esc(idea)}</div></div></div></div>`;
+}
+function bindToday(){
+  const d = today(); bindAppts();
+  document.querySelectorAll("[data-en]").forEach(b => b.onclick = () => {
+    d.energy = +b.dataset.en; S.current = null; save(); render();
+    if(d.energy===1) toast("Sparmodus an. Heute zählt jede Kleinigkeit doppelt so viel. Gefühlt.");
+  });
+  const ce = $("#changeEnergy"); if(ce) ce.onclick = () => { d.energy = null; S.current = null; save(); render(); };
+  const ol = $("#openLetter"); if(ol) ol.onclick = () => openNote(S.notesUnlocked-1, true);
+  const done = $("#doneBtn"); if(done) done.onclick = () => {
+    const c = S.current; const t = taskById(c.id); const now = new Date();
+    d.done.push({id:t.id, text: c.mini && t.mini ? t.mini : t.text, mini:!!c.mini, ts:now.getTime()});
+    S.events.push({id:t.id, a:"done", d:dkey(), h:now.getHours(), e:d.energy, m:!!c.mini});
+    addBloom(1); const goalHit = d.done.length === GOAL[d.energy];
+    S.current = null; S.comeback = false; save(); render();
+    celebrate(goalHit ? "Tagesziel geschafft! Alles, was jetzt noch kommt, ist Bonus. Du darfst aber auch einfach chillen." : c.mini ? pick(FUN_MINI) : pick(FUN_DONE));
+  };
+  const sk = $("#skipBtn"); if(sk) sk.onclick = () => {
+    const c = S.current; d.skips.push(c.id); S.events.push({id:c.id, a:"skip", d:dkey(), h:new Date().getHours(), e:d.energy});
+    const nt = nextTask([c.id]); S.current = nt ? Object.assign(nt,{day:dkey()}) : null; save(); render(); toast(pick(FUN_SKIP), 2200);
+  };
+  const sm = $("#smallerBtn"); if(sm) sm.onclick = () => { S.current.mini = true; S.events.push({id:S.current.id, a:"smaller", d:dkey(), h:new Date().getHours(), e:d.energy}); save(); render(); };
+  document.querySelectorAll("[data-mama]").forEach(b => b.onclick = () => {
+    const label = b.dataset.mama; const idx = d.mama.findIndex(x=>x.label===label);
+    if(idx >= 0){ d.mama.splice(idx,1); if(d.mamaBlooms > d.mama.length){ d.mamaBlooms--; d.blooms--; S.totalBlooms--; } save(); render(); return; }
+    d.mama.push({label, ts:Date.now()});
+    d.mamaBlooms = d.mamaBlooms || 0;
+    if(d.mamaBlooms < 6){ d.mamaBlooms++; addBloom(1); }
+    save(); render(); celebrate(pick(["Festgehalten. Solche Momente sind Gold.","Ihr zwei seid ein echtes Team.","Schöner Moment. Der bleibt.","Notiert. Ella hat Glück mit dir."]));
+  });
+  const ev = $("#eveningBtn"); if(ev) ev.onclick = openEvening;
+}
+
+/* ================= Termine ================= */
+function apptWhen(a){
+  const gap = daysBetween(dkey(), a.date); const d = parseKey(a.date);
+  const day = gap === 0 ? "Heute" : gap === 1 ? "Morgen" : gap === 2 ? "Übermorgen" : `${WD[d.getDay()]}, ${d.getDate()}. ${MO[d.getMonth()]}`;
+  return day + (a.time ? `, ${a.time} Uhr` : "");
+}
+function upcoming(days=14){
+  const now = new Date(); const nowT = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return S.appts.filter(a => { const g = daysBetween(dkey(), a.date); if(g < 0 || g > days) return false; if(g === 0 && a.time && a.time < nowT) return false; return true; })
+    .sort((a,b) => (a.date + (a.time||"99")).localeCompare(b.date + (b.time||"99")));
+}
+function apptRow(a){
+  const d = parseKey(a.date); const isToday = a.date === dkey();
+  return `<button class="appt ${isToday?"today":""}" data-appt="${a.id}"><span class="when">${["So","Mo","Di","Mi","Do","Fr","Sa"][d.getDay()]}<b>${d.getDate()}</b></span>
+    <span style="flex:1;min-width:0"><b style="font-weight:600;display:block">${esc(a.title)}</b><span class="small muted">${apptWhen(a)}${isToday?" · nicht vergessen":""}</span></span></button>`;
+}
+function apptBlock(){
+  const up = upcoming(7);
+  if(!up.length) return `<button class="btn btn-ghost" data-addappt style="height:42px;font-size:14px;margin-bottom:14px">${ic.clock} Termin eintragen</button>`;
+  return `<div class="card" style="padding:12px 20px 10px"><div class="row" style="justify-content:space-between"><span class="kicker">Termine</span><button class="small" data-addappt style="color:var(--rose-deep);font-weight:600">+ Neu</button></div>
+    ${up.slice(0,3).map(apptRow).join("")}${up.length>3?`<p class="small muted" style="margin:6px 0 4px">und ${up.length-3} weitere im Kalender</p>`:""}</div>`;
+}
+function bindAppts(root=document){
+  root.querySelectorAll("[data-addappt]").forEach(b => b.onclick = () => openApptEditor());
+  root.querySelectorAll("[data-appt]").forEach(b => b.onclick = () => openApptEditor(b.dataset.appt));
+}
+function openApptEditor(id, presetDate){
+  const a = id ? S.appts.find(x=>x.id===id) : {title:"", date: presetDate || dkey(), time:"", note:""};
+  if(!a) return;
+  openSheet(`<h2>${id?"Termin":"Neuer Termin"}</h2>
+    <label class="f">Was?</label><input type="text" autocomplete="off" id="apT" value="${esc(a.title)}" placeholder="z. B. Kinderarzt mit Ella">
+    <div class="row" style="gap:10px"><div style="flex:1.3"><label class="f">Wann?</label><input type="date" id="apD" value="${esc(a.date)}"></div>
+    <div style="flex:1"><label class="f">Uhrzeit</label><input type="time" id="apZ" value="${esc(a.time)}"></div></div>
+    <label class="f">Notiz <span class="muted" style="font-weight:400">(optional)</span></label><input type="text" autocomplete="off" id="apN" value="${esc(a.note||"")}" placeholder="z. B. Impfpass mitnehmen">
+    <button class="btn btn-primary btn-block" id="apS" style="margin-top:18px">${ic.check} Speichern</button>
+    ${id?`<button class="btn btn-soft btn-block" id="apCal" style="margin-top:8px">${ic.down} In den iPhone-Kalender (mit Erinnerung)</button>
+    <button class="btn btn-ghost btn-block" id="apDel" style="margin-top:8px">${ic.trash} Löschen</button>`:""}
+    <p class="small muted" style="margin:14px 2px 0">Der Termin steht dann auf deiner Startseite und im Kalender. Für eine Erinnerung aufs Handy: einmal in den iPhone-Kalender übernehmen.</p>`,
+  sh => {
+    sh.querySelector("#apS").onclick = () => {
+      const t = sh.querySelector("#apT").value.trim(), dt = sh.querySelector("#apD").value, tm = sh.querySelector("#apZ").value, nt = sh.querySelector("#apN").value.trim();
+      if(!t) return toast("Wie heißt der Termin?"); if(!/^\d{4}-\d{2}-\d{2}$/.test(dt)) return toast("Bitte ein Datum wählen.");
+      if(id){ Object.assign(a, {title:t, date:dt, time:tm, note:nt}); }
+      else S.appts.push({id:"a"+Date.now(), title:t, date:dt, time:tm, note:nt});
+      save(); render();
+      const saved = id ? a : S.appts[S.appts.length-1];
+      openSheet(`<h2>Eingetragen.</h2><p class="sub" style="margin-top:6px">${esc(saved.title)} · ${apptWhen(saved)}</p>
+        <button class="btn btn-primary btn-block" id="apCal2">${ic.down} Erinnerung aufs Handy holen</button>
+        <button class="btn btn-ghost btn-block" data-close style="margin-top:8px">Passt so</button>
+        <p class="small muted" style="margin:14px 2px 0">Übernimmt den Termin in deinen iPhone-Kalender. Der erinnert dich dann ${saved.time?"am Vortag und eine Stunde vorher":"am Vortag"}.</p>`,
+        s2 => s2.querySelector("#apCal2").onclick = () => { downloadICS(saved); closeSheet(); });
+    };
+    const c = sh.querySelector("#apCal"); if(c) c.onclick = () => downloadICS(a);
+    const del = sh.querySelector("#apDel"); if(del) del.onclick = () => { if(confirm("Termin löschen?")){ S.appts = S.appts.filter(x=>x.id!==id); save(); closeSheet(); render(); } };
+  });
+}
+function icsEsc(s){ return String(s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+function buildICS(a){
+  const d = a.date.replace(/-/g,""); const stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  let start, end, alarms;
+  if(a.time){
+    const [hh,mm] = a.time.split(":").map(Number); const st = new Date(...a.date.split("-").map((v,i)=>i===1?+v-1:+v), hh, mm); const en = new Date(st.getTime()+60*60000);
+    const f = x => `${x.getFullYear()}${pad(x.getMonth()+1)}${pad(x.getDate())}T${pad(x.getHours())}${pad(x.getMinutes())}00`;
+    start = `DTSTART:${f(st)}`; end = `DTEND:${f(en)}`;
+    alarms = ["-P1D","-PT1H"];
+  } else {
+    const nd = parseKey(a.date); nd.setDate(nd.getDate()+1);
+    start = `DTSTART;VALUE=DATE:${d}`; end = `DTEND;VALUE=DATE:${dkey(nd).replace(/-/g,"")}`;
+    alarms = ["-PT15H"];
+  }
+  const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Bloom//DE","CALSCALE:GREGORIAN","BEGIN:VEVENT",
+    `UID:${a.id}@bloom`, `DTSTAMP:${stamp}`, start, end, `SUMMARY:${icsEsc(a.title)}`];
+  if(a.note) lines.push(`DESCRIPTION:${icsEsc(a.note)}`);
+  alarms.forEach(t => lines.push("BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${icsEsc(a.title)} – nicht vergessen`,`TRIGGER:${t}`,"END:VALARM"));
+  lines.push("END:VEVENT","END:VCALENDAR");
+  return lines.join("\r\n");
+}
+function downloadICS(a){
+  try{
+    const blob = new Blob([buildICS(a)], {type:"text/calendar;charset=utf-8"});
+    const url = URL.createObjectURL(blob); const link = document.createElement("a");
+    link.href = url; link.download = (a.title.replace(/[^\wäöüÄÖÜß -]/g,"").trim() || "termin") + ".ics";
+    document.body.appendChild(link); link.click(); setTimeout(()=>{ URL.revokeObjectURL(url); link.remove(); }, 2000);
+    toast("Tipp auf „Hinzufügen“, dann erinnert dich dein iPhone.");
+  } catch(e){ toast("Das hat nicht geklappt: " + e.message); }
+}
+
+/* ================= Check-in ================= */
+function openCheckin(evening=false){
+  const st = {mood:null, energy:today().energy, tags:[], note:""};
+  openSheet(`
+    <h2>${evening?"Wie war dein Tag?":"Wie geht's dir gerade?"}</h2>
+    <p class="small muted" style="margin:0 0 18px">${pad(new Date().getHours())}:${pad(new Date().getMinutes())} Uhr · dauert 20 Sekunden</p>
+    <div class="moods">${MOODS.map(m=>`<button class="mood" data-mood="${m.v}"><i style="background:${m.c}"></i>${m.w}</button>`).join("")}</div>
+    <label class="f">Energie</label>
+    <div>${["Wenig","Mittel","Gut"].map((w,i)=>`<button class="chip ${st.energy===i+1?"on":""}" data-cen="${i+1}">${w}</button>`).join("")}</div>
+    <label class="f">Was war los? <span class="muted" style="font-weight:400">(optional)</span></label>
+    <div>${TAGS.map(t=>`<button class="chip" data-tag="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+    <label class="f">${evening?"Was hast du heute geschafft, egal wie klein?":"Ein Satz dazu?"} <span class="muted" style="font-weight:400">(optional)</span></label>
+    <textarea id="ciNote" placeholder="${evening?"Zum Beispiel: Ich bin aufgestanden. Das zählt.":"Schreib einfach, was dir durch den Kopf geht."}"></textarea>
+    <button class="btn btn-primary btn-block" id="ciSave" style="margin-top:18px" disabled>Speichern</button>
+  `, sh => {
+    const saveBtn = sh.querySelector("#ciSave"); saveBtn.style.opacity = .5;
+    sh.querySelectorAll("[data-mood]").forEach(b => b.onclick = () => { st.mood = +b.dataset.mood; sh.querySelectorAll("[data-mood]").forEach(x=>x.classList.toggle("on", x===b)); saveBtn.disabled=false; saveBtn.style.opacity=1; });
+    sh.querySelectorAll("[data-cen]").forEach(b => b.onclick = () => { st.energy = +b.dataset.cen; sh.querySelectorAll("[data-cen]").forEach(x=>x.classList.toggle("on", x===b)); });
+    sh.querySelectorAll("[data-tag]").forEach(b => b.onclick = () => { const t=b.dataset.tag; const i=st.tags.indexOf(t); i>=0?st.tags.splice(i,1):st.tags.push(t); b.classList.toggle("on"); });
+    saveBtn.onclick = () => {
+      st.note = sh.querySelector("#ciNote").value.trim();
+      const ts = Date.now(); S.checkins.push({ts, mood:st.mood, energy:st.energy, tags:st.tags, note:st.note, evening});
+      const d = today(); if(!d.energy && st.energy) d.energy = st.energy;
+      const ciToday = S.checkins.filter(c => dkey(new Date(c.ts)) === dkey()).length;
+      if(ciToday <= 3) addBloom(1);
+      save(); closeSheet(); render();
+      if(DISTRESS.test(st.note)) { setTimeout(()=>openHelp(true), 400); return; }
+      celebrate(st.mood <= 2 ? "Danke, dass du ehrlich bist. Das ist schon was. Sei heute lieb zu dir." : st.mood >= 4 ? "Schön! Merk dir dieses Gefühl, es kommt wieder." : "Gespeichert. Ich lern dich immer besser kennen.");
+    };
+  });
+}
+function openEvening(){ openCheckin(true); }
+
+/* ================= Hilfe-Ecke ================= */
+let breathTimer;
+function openHelp(fromNote){
+  const lp = S.settings.laraPhone; const ln = esc(S.settings.laraName);
+  openSheet(`
+    <h2>${fromNote?"Hey. Danke, dass du das aufgeschrieben hast.":"Kurz durchatmen."}</h2>
+    <p class="sub small" style="margin-top:6px">${fromNote?"Das klingt gerade richtig schwer. Du musst das nicht allein tragen.":"Hier musst du nichts schaffen. Einfach kurz runterkommen."}</p>
+    <h3 style="margin-top:14px">Zusammen atmen</h3>
+    <div class="card" style="text-align:center"><div class="breath" id="breath">Bereit?</div>
+      <button class="btn btn-soft" id="breathBtn">${ic.wind} Starten</button>
+      <p class="small muted" style="margin:12px 0 0">4 Sekunden ein, 6 Sekunden aus. Langes Ausatmen beruhigt den Körper.</p></div>
+    <h3>Zurück ins Hier</h3>
+    <div class="card" id="ground"></div>
+    <div class="ink" style="margin-top:22px">${tattooStars()}<div class="lbl">Lust zu quatschen?</div><p>${esc(pick(LAUGHS.filter(x=>x.length<120)))}</p></div>
+    ${lp ? `<div class="row" style="gap:8px"><a class="btn btn-ghost" href="tel:${esc(lp)}" style="flex:1;text-decoration:none;height:46px;font-size:15px">${ic.phone} ${ln} anrufen</a>
+      <a class="btn btn-ghost" href="sms:${esc(lp)}" style="flex:1;text-decoration:none;height:46px;font-size:15px">${ic.msg} Schreiben</a></div>` : ""}
+    <p class="small muted" style="text-align:center;margin-top:18px">Bei akuter Gefahr: 112</p>
+  `, sh => {
+    const steps = ["5 Dinge, die du sehen kannst.","4 Dinge, die du anfassen kannst. Fühl sie wirklich.","3 Dinge, die du hören kannst.","2 Dinge, die du riechen kannst.","1 Sache, die du schmecken kannst. Oder ein Schluck Wasser.","Gut gemacht. Du bist hier. Du bist sicher in diesem Moment."];
+    let gi = 0; const g = sh.querySelector("#ground");
+    const drawG = () => { g.innerHTML = `<p style="font-family:var(--serif);font-size:20px;margin:0 0 14px">${steps[gi]}</p>${gi<steps.length-1?`<button class="btn btn-ghost" id="gNext">Weiter</button>`:`<button class="btn btn-ghost" id="gNext">Nochmal</button>`}`; g.querySelector("#gNext").onclick = () => { gi = (gi+1) % steps.length; drawG(); }; };
+    drawG();
+    const b = sh.querySelector("#breath");
+    sh.querySelector("#breathBtn").onclick = (e) => {
+      clearInterval(breathTimer); let phase = 0; e.currentTarget.textContent = "Läuft …";
+      const tick = () => { if(phase%2===0){ b.textContent="Einatmen"; b.style.transitionDuration="4s"; b.style.transform="scale(1.25)"; } else { b.textContent="Ausatmen"; b.style.transitionDuration="6s"; b.style.transform="scale(.85)"; } phase++; };
+      tick(); let elapsed = 0;
+      breathTimer = setInterval(() => { elapsed += 1; const need = (phase%2===1) ? 4 : 6; if(elapsed >= need){ elapsed = 0; tick(); } }, 1000);
+    };
+  });
+}
+
+/* ================= Liebesbrief ================= */
+function noteText(i){
+  const raw = i === 0 ? S.settings.loveNote : LARA_LETTERS[i];
+  return String(raw||"").replaceAll("{name}", S.profile.name).replaceAll("{kid}", S.profile.kid || "deine Tochter");
+}
+function openNote(i, isNew){
+  i = Math.max(0, Math.min(i, S.notesUnlocked-1));
+  openSheet(`<div class="letter" style="margin-top:10px">
+    <div class="kw">Brief ${i+1} · für ${esc(S.profile.name)}</div>
+    ${esc(noteText(i)).split(/\n+/).map(p=>`<p>${p}</p>`).join("")}
+    <p style="text-align:right;font-style:italic;color:var(--rose-deep)">Deine ${esc(S.settings.signature)}</p></div>
+    ${S.settings.laraPhone?`<a class="btn btn-primary btn-block" href="tel:${esc(S.settings.laraPhone)}" style="text-decoration:none">${ic.phone} ${esc(S.settings.laraName)} anrufen</a>`:""}
+    <p class="small muted" style="text-align:center;margin-top:14px">${S.notesUnlocked < LARA_LETTERS.length ? "Morgen wartet vielleicht schon der nächste Brief." : "Alle Briefe findest du unter „Ich“."}</p>`);
+  if(isNew && S.newNote){ S.newNote = false; save(); render(); }
+}
+function openNotesList(){
+  openSheet(`<h2>Briefe von ${esc(S.settings.laraName)}</h2><p class="small muted" style="margin:4px 0 14px">${S.notesUnlocked} von ${LARA_LETTERS.length} geöffnet. Jeden Tag, an dem du reinschaust, kann ein neuer dazukommen.</p>
+    <div class="card" style="padding:6px 20px">${Array.from({length:S.notesUnlocked},(_,i)=>`<button class="list-item" style="width:100%;text-align:left" data-note="${i}"><span style="color:var(--rose)">${ic.msg}</span><span style="flex:1">${esc(noteText(i).split("\n")[0].slice(0,46))} …</span>${ic.right.replace('<svg','<svg width="16" height="16" style="color:var(--muted)"')}</button>`).join("")}</div>`,
+    sh => sh.querySelectorAll("[data-note]").forEach(b => b.onclick = () => openNote(+b.dataset.note)));
+}
+// „Weißt du noch?“ – zeigt etwas, das sie früher schon geschafft hat
+let SESSION_MEMO_SEED = Math.random();
+function rememberLine(){
+  const items = [];
+  Object.entries(S.days).forEach(([k,d]) => { if(k === dkey()) return; d.done.forEach(x => items.push({k, t:x.text})); d.mama.forEach(x => items.push({k, t:x.label, m:true})); });
+  if(items.length < 3) return null;
+  const it = items[Math.floor(SESSION_MEMO_SEED * items.length)];
+  const gap = daysBetween(it.k, dkey());
+  const when = gap === 1 ? "Gestern" : gap < 7 ? `Am ${WD[parseKey(it.k).getDay()]}` : `Am ${fmtShort(it.k)}`;
+  const total = Object.values(S.days).reduce((a,d)=>a+d.done.length+d.mama.length,0);
+  return it.m ? `${when}: „${esc(it.t)}“ mit ${esc(S.profile.kid||"deiner Tochter")}. Einer von ${total} Momenten, die du schon gesammelt hast.`
+              : `${when} hast du „${esc(it.t)}“ geschafft. Und das war nur eins von ${total} Dingen.`;
+}
+
+/* ================= GARTEN ================= */
+function viewGarden(){
+  const total = S.totalBlooms; const show = Math.min(total, 64);
+  const doneAll = Object.values(S.days).reduce((a,d)=>a+d.done.length,0); const momAll = Object.values(S.days).reduce((a,d)=>a+d.mama.length,0);
+  let html = tattoo("moon","right:-34px;top:24px;width:140px") + topBar("Dein Garten") + `<h1>Alles, was du <em>geschafft</em> hast</h1><p class="sub">${doneAll+momAll ? `${doneAll} ${doneAll===1?"erledigte Sache":"erledigte Sachen"} und ${momAll} ${momAll===1?"schöner Moment":"schöne Momente"} mit ${esc(S.profile.kid||"deiner Tochter")}. Und du denkst manchmal, du schaffst nichts?` : "Hier geht nie etwas verloren. Jede Blüte bleibt."}</p>`;
+  html += `<div class="garden"><div class="count"><div><b>${total}</b> <span class="muted small">${total===1?"Blüte":"Blüten"}</span></div><span class="small muted">seit ${fmtShort(S.firstDay)}</span></div>
+    <div class="bed">${show ? Array.from({length:show},(_,i)=>flowerSVG(total - show + i + 1, 44)).join("") : `<p class="small muted" style="grid-column:1/-1;text-align:center;padding:30px 0">Dein erster Samen liegt bereit. Eine kleine Sache, und hier blüht's.</p>`}</div>
+    ${total>64?`<p class="small muted" style="text-align:center;margin:10px 0 0">und ${total-64} weitere Blüten im Beet dahinter</p>`:""}</div>`;
+  // Kalender
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  const first = new Date(y,m,1); const startWd = (first.getDay()+6)%7; const dim = new Date(y,m+1,0).getDate();
+  let cells = ""; for(let i=0;i<startWd;i++) cells += `<div></div>`;
+  for(let dd=1; dd<=dim; dd++){
+    const k = `${y}-${pad(m+1)}-${pad(dd)}`; const day = S.days[k]; const b = day ? day.blooms : 0;
+    const hasAp = S.appts.some(a=>a.date===k);
+    cells += `<button class="d ${b?"has":""} ${k===dkey()?"today":""}" data-day="${k}">${hasAp?'<span class="ap"></span>':""}${dd}${b?`<span class="pd">${Array.from({length:Math.min(b,3)},()=>"<i></i>").join("")}</span>`:""}</button>`;
+  }
+  html += `<h3>Dein Kalender</h3><div class="card"><div class="calnav"><button id="calPrev" aria-label="Vorheriger Monat">${ic.left}</button><b style="font-family:var(--serif);font-weight:400;font-size:19px">${MO[m]} ${y}</b><button id="calNext" aria-label="Nächster Monat">${ic.right}</button></div>
+    <div class="cal">${["Mo","Di","Mi","Do","Fr","Sa","So"].map(w=>`<div class="wd">${w}</div>`).join("")}${cells}</div>
+    <p class="small muted" style="margin:12px 0 0">Rosa Tage sind Tage mit Blüten, ein schwarzer Punkt ist ein Termin. Leere Tage sind einfach Pausen.</p></div>`;
+  const up = upcoming(60);
+  html += `<h3>Deine Termine</h3><div class="card" style="padding:${up.length?"6px 20px":"18px 20px"}">${up.length ? up.map(apptRow).join("") : `<p class="small muted" style="margin:0 0 12px">Gerade keine Termine. Herrlich.</p>`}
+    <button class="btn btn-ghost btn-block" data-addappt style="margin:${up.length?"10px 0 12px":"0"};height:44px">${ic.plus} Termin eintragen</button></div>`;
+  // Wochenbrief
+  const wk = weekKey(); const ai = S.letters[wk];
+  html += `<h3>Dein Wochenbrief</h3><div class="letter"><div class="kw">${wk.replace("-"," · ")}</div>
+    ${(ai ? ai.split(/\n+/) : localLetter()).map(p=>`<p>${esc(p)}</p>`).join("")}
+    ${S.settings.aiOn && S.settings.aiUrl ? `<button class="btn btn-soft" id="aiLetter" style="margin-top:6px">${ic.spark} ${ai?"Neu schreiben lassen":"Von der KI schreiben lassen"}</button>`:""}</div>`;
+  // Muster
+  const ins = insights();
+  html += `<h3>Was ich über dich gelernt habe</h3>`;
+  if(!ins.length) html += `<div class="card"><p class="small muted" style="margin:0">Noch zu früh für Muster. Je öfter du eincheckst und Sachen abhakst, desto besser lerne ich, was dir hilft. Nach etwa einer Woche wird's spannend.</p></div>`;
+  else html += ins.map(x=>`<div class="card insight"><div class="ic" style="background:${x.col}">${ic[x.icon]}</div><div><b style="font-weight:600">${esc(x.t)}</b><div class="small muted" style="margin-top:2px">${esc(x.b)}</div></div></div>`).join("");
+  return html;
+}
+function fmtShort(k){ const d = parseKey(k); return `${d.getDate()}. ${MO[d.getMonth()]}`; }
+function bindGarden(){
+  $("#calPrev").onclick = () => { calMonth.setMonth(calMonth.getMonth()-1); render(); };
+  $("#calNext").onclick = () => { calMonth.setMonth(calMonth.getMonth()+1); render(); };
+  document.querySelectorAll("[data-day]").forEach(b => b.onclick = () => openDay(b.dataset.day));
+  const al = $("#aiLetter"); if(al) al.onclick = aiWriteLetter;
+  bindAppts();
+}
+function openDay(k){
+  const d = S.days[k]; const ci = S.checkins.filter(c => dkey(new Date(c.ts)) === k);
+  const dt = parseKey(k);
+  let html = `<h2>${WD[dt.getDay()]}, ${dt.getDate()}. ${MO[dt.getMonth()]}</h2>`;
+  const aps = S.appts.filter(a=>a.date===k).sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"));
+  const apHtml = aps.length ? `<h3 style="margin-top:12px">Termine</h3><div class="card" style="padding:6px 20px">${aps.map(apptRow).join("")}</div>` : "";
+  const addBtn = `<button class="btn btn-ghost btn-block" id="dayAdd" style="margin-top:6px;height:44px">${ic.plus} Termin an diesem Tag</button>`;
+  const mountDay = sh => { bindAppts(sh); const b = sh.querySelector("#dayAdd"); if(b) b.onclick = () => openApptEditor(null, k); };
+  if(!d && !ci.length){ html += aps.length ? apHtml + addBtn : `<p class="sub" style="margin-top:8px">Ein Pausentag. Auch die gehören dazu. Blumen wachsen nachts auch.</p>${addBtn}`; openSheet(html, mountDay); return; }
+  html += `<p class="small muted" style="margin:0 0 14px">${d?d.blooms:0} Blüten an diesem Tag</p>` + apHtml;
+  if(d && d.done.length) html += `<h3 style="margin-top:10px">Geschafft</h3><div class="card" style="padding:6px 20px">${d.done.map(x=>`<div class="list-item"><span class="dot" style="background:var(--rose)"></span>${esc(x.text)}</div>`).join("")}</div>`;
+  if(d && d.mama.length) html += `<h3>Momente mit ${esc(S.profile.kid||"deiner Tochter")}</h3><div class="card">${d.mama.map(x=>`<span class="chip on">${esc(x.label)}</span>`).join("")}</div>`;
+  if(ci.length) html += `<h3>Check-ins</h3>` + ci.map(c=>`<div class="card"><div class="row"><span class="dot" style="width:14px;height:14px;background:${MOODS[c.mood-1].c}"></span><b style="font-weight:600">${MOODS[c.mood-1].w}</b><span class="small muted" style="margin-left:auto">${pad(new Date(c.ts).getHours())}:${pad(new Date(c.ts).getMinutes())}</span></div>${c.tags.length?`<div class="small muted" style="margin-top:8px">${c.tags.map(esc).join(" · ")}</div>`:""}${c.note?`<p style="margin:10px 0 0;font-family:var(--serif);font-size:16px">${esc(c.note)}</p>`:""}</div>`).join("");
+  html += addBtn; openSheet(html, mountDay);
+}
+
+/* ================= ICH ================= */
+function viewMe(){
+  const st = S.settings; const total = S.totalBlooms;
+  let html = tattoo("fly","right:-30px;top:30px;width:140px;transform:rotate(-12deg)") + topBar("Ich") + `<h1>Deine <em>Ecke</em></h1>`;
+  html += `<div class="lara-quote"><p>${esc(SESSION_LINE)}</p><span>${esc(st.laraName)}</span>
+    <div class="row" style="margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="height:44px" id="readLetter">${ic.msg} Briefe (${S.notesUnlocked})</button>
+      ${st.laraPhone?`<a class="btn btn-soft" style="height:44px;text-decoration:none;background:#fff" href="tel:${esc(st.laraPhone)}">${ic.phone} Anrufen</a>`:""}</div></div>`;
+  html += `<h3>Belohnungen</h3><div class="card" style="padding:8px 20px">
+    ${S.rewards.map(r=>{ const pct = Math.min(100, Math.round(total/r.need*100)); const open = total >= r.need;
+      return `<div class="rw"><span style="color:var(--rose);flex:none">${ic.gift.replace('<svg','<svg width="24" height="24"')}</span>
+      <div style="flex:1;min-width:0"><div style="font-weight:500">${esc(r.title)}</div><div class="small muted">${r.redeemed?"Gegönnt am "+fmtShort(dkey(new Date(r.redeemed))):open?"Freigeschaltet!":`${total} von ${r.need} Blüten`}</div>${!r.redeemed?`<div class="bar"><i style="width:${pct}%"></i></div>`:""}</div>
+      ${r.redeemed?`<span class="badge" style="background:var(--sage);color:#4D6B52">Gegönnt</span>`:open?`<button class="badge" style="background:var(--rose);color:#fff" data-redeem="${r.id}">Gönnen</button>`:`<button aria-label="Löschen" data-delrw="${r.id}" style="color:var(--muted)">${ic.trash.replace('<svg','<svg width="18" height="18"')}</button>`}</div>`; }).join("")}
+    <button class="btn btn-ghost btn-block" id="addReward" style="margin:12px 0 10px;height:46px">${ic.plus} Eigene Belohnung</button></div>
+    <p class="small muted" style="margin:-4px 4px 0">Blüten werden beim Gönnen nicht abgezogen. Was du gesammelt hast, bleibt.</p>`;
+
+  html += `<h3>Kleine Helfer</h3><div class="card" style="padding:6px 20px">
+    <button class="list-item" style="width:100%;text-align:left" data-sos><span style="color:var(--rose)">${ic.wind}</span><span style="flex:1">Atmen & zur Ruhe kommen</span>${ic.right.replace('<svg','<svg width="16" height="16" style="color:var(--muted)"')}</button>
+    <button class="list-item" style="width:100%;text-align:left" id="myTasks"><span style="color:var(--rose)">${ic.pen}</span><span style="flex:1">Aufgaben anpassen</span>${ic.right.replace('<svg','<svg width="16" height="16" style="color:var(--muted)"')}</button>
+    ${st.aiOn && st.aiUrl ? `<button class="list-item" style="width:100%;text-align:left" id="aiChat"><span style="color:var(--rose)">${ic.chat}</span><span style="flex:1">Mit Bloom reden</span>${ic.right.replace('<svg','<svg width="16" height="16" style="color:var(--muted)"')}</button>`:""}
+  </div>`;
+
+  const lb = st.lastBackup ? fmtShort(dkey(new Date(st.lastBackup))) : "noch nie";
+  html += `<h3>Sicherung</h3><div class="card">
+    <p class="small muted" style="margin:0 0 12px">Alles ist nur auf diesem Handy gespeichert. Mach ab und zu ein Backup, zum Beispiel in iCloud Drive. Letztes Backup: <b>${lb}</b></p>
+    <div class="row"><button class="btn btn-soft" style="flex:1" id="exportBtn">${ic.down} Backup</button><button class="btn btn-ghost" style="flex:1" id="importBtn">${ic.up} Laden</button></div>
+    <input type="file" id="importFile" accept="application/json,.json" class="hidden"></div>`;
+
+  if(st.aiUrl) html += `<h3>Bloom-Briefe von der KI</h3><div class="card">
+    <div class="row" style="align-items:flex-start"><div style="flex:1"><b style="font-weight:600">Persönlicher Wochenbrief & Chat</b>
+    <p class="small muted" style="margin:4px 0 0">Wenn an, liest eine KI deine Einträge der letzten 2 Wochen und schreibt dir. Wenn aus, bleibt alles nur auf deinem Handy.</p></div>
+    <button class="switch ${st.aiOn?"on":""}" id="aiToggle" aria-label="KI an oder aus"></button></div></div>`;
+
+  html += `<h3>Einstellungen</h3><div class="card">
+    <label class="f" style="margin-top:0">Dein Name</label><input type="text" autocomplete="off" id="setName" value="${esc(S.profile.name)}">
+    <label class="f">Name deiner Tochter</label><input type="text" autocomplete="off" id="setKid" value="${esc(S.profile.kid||"")}">
+    <label class="f">Telefonnummer von ${esc(st.laraName)}</label><input type="tel" autocomplete="off" id="setPhone" value="${esc(st.laraPhone)}" placeholder="+49 …">
+    <button class="btn btn-ghost btn-block" id="saveSettings" style="margin-top:16px">Speichern</button></div>
+    <p class="small muted" style="text-align:center;margin:24px 0 10px">Bloom · gemacht mit Liebe von ${esc(st.laraName)}</p>`;
+  return html;
+}
+function bindMe(){
+  $("#readLetter").onclick = openNotesList;
+  document.querySelectorAll("[data-redeem]").forEach(b => b.onclick = () => { const r = S.rewards.find(x=>x.id===b.dataset.redeem); r.redeemed = Date.now(); save(); render(); celebrate("Gönn dir! Du hast es dir verdient. Ohne Diskussion."); });
+  document.querySelectorAll("[data-delrw]").forEach(b => b.onclick = () => { if(confirm("Belohnung löschen?")){ S.rewards = S.rewards.filter(x=>x.id!==b.dataset.delrw); save(); render(); } });
+  $("#addReward").onclick = () => openSheet(`<h2>Eigene Belohnung</h2><label class="f">Was gönnst du dir?</label><input type="text" id="rwT" placeholder="z. B. Neues Lipgloss">
+    <label class="f">Ab wie vielen Blüten?</label><input type="number" id="rwN" value="${Math.max(10, Math.ceil((S.totalBlooms+20)/5)*5)}" inputmode="numeric">
+    <button class="btn btn-primary btn-block" id="rwS" style="margin-top:18px">Hinzufügen</button>`, sh => {
+      sh.querySelector("#rwS").onclick = () => { const t = sh.querySelector("#rwT").value.trim(); const n = parseInt(sh.querySelector("#rwN").value,10); if(!t || !(n>0)) return toast("Bitte Titel und Zahl eintragen."); S.rewards.push({id:"r"+Date.now(), title:t, need:n, redeemed:null}); S.rewards.sort((a,b)=>a.need-b.need); save(); closeSheet(); render(); };
+    });
+  $("#myTasks").onclick = openTaskEditor;
+  const ac = $("#aiChat"); if(ac) ac.onclick = openAiChat;
+  $("#exportBtn").onclick = exportBackup;
+  $("#importBtn").onclick = () => $("#importFile").click();
+  $("#importFile").onchange = importBackup;
+  const at = $("#aiToggle"); if(at) at.onclick = () => {
+    if(!S.settings.aiOn && !confirm("Wenn du das anschaltest, werden deine Check-ins, Notizen und erledigten Aufgaben der letzten 2 Wochen an einen KI-Dienst geschickt, damit er dir schreiben kann. Willst du das?")) return;
+    S.settings.aiOn = !S.settings.aiOn; save(); render();
+  };
+    $("#saveSettings").onclick = () => { S.profile.name = $("#setName").value.trim() || S.profile.name; S.profile.kid = $("#setKid").value.trim(); S.settings.laraPhone = $("#setPhone").value.trim(); save(); render(); toast("Gespeichert."); };
+}
+function openTaskEditor(){
+  const draw = () => `<h2>Aufgaben anpassen</h2><p class="small muted" style="margin:4px 0 14px">Tipp auf eine Aufgabe, um sie aus- oder einzublenden. Ausgeblendete schlage ich nicht mehr vor.</p>
+    ${Object.entries(CATS).map(([k,c]) => { const ts = TASKS.concat(S.custom).filter(t=>t.cat===k); if(!ts.length) return ""; return `<h3 style="margin-top:16px">${c.name}</h3><div>${ts.map(t=>`<button class="chip ${S.hidden.includes(t.id)?"":"on"}" data-tog="${t.id}">${esc(t.text)}</button>`).join("")}</div>`; }).join("")}
+    <h3>Eigene Aufgabe</h3><input type="text" id="ntT" placeholder="z. B. Pflanzen gießen">
+    <label class="f">Mini-Version (optional)</label><input type="text" id="ntM" placeholder="z. B. Nur eine Pflanze">
+    <label class="f">Wie oft ungefähr?</label><div>${[[1,"Täglich"],[3,"Alle paar Tage"],[7,"Wöchentlich"],[14,"Alle 2 Wochen"]].map(([v,w],i)=>`<button class="chip ${i===1?"on":""}" data-rh="${v}">${w}</button>`).join("")}</div>
+    <label class="f">Wie anstrengend?</label><div>${[[1,"Leicht"],[2,"Mittel"],[3,"Braucht Kraft"]].map(([v,w],i)=>`<button class="chip ${i===0?"on":""}" data-lv="${v}">${w}</button>`).join("")}</div>
+    <button class="btn btn-primary btn-block" id="ntS" style="margin-top:16px">${ic.plus} Hinzufügen</button>`;
+  const mount = sh => {
+    let rh = 3, lv = 1;
+    sh.querySelectorAll("[data-tog]").forEach(b => b.onclick = () => { const id = b.dataset.tog; const i = S.hidden.indexOf(id); i>=0 ? S.hidden.splice(i,1) : S.hidden.push(id); b.classList.toggle("on"); S.current = null; save(); });
+    sh.querySelectorAll("[data-rh]").forEach(b => b.onclick = () => { rh = +b.dataset.rh; sh.querySelectorAll("[data-rh]").forEach(x=>x.classList.toggle("on",x===b)); });
+    sh.querySelectorAll("[data-lv]").forEach(b => b.onclick = () => { lv = +b.dataset.lv; sh.querySelectorAll("[data-lv]").forEach(x=>x.classList.toggle("on",x===b)); });
+    sh.querySelector("#ntS").onclick = () => {
+      const t = sh.querySelector("#ntT").value.trim(); if(!t) return toast("Wie heißt die Aufgabe?");
+      S.custom.push({id:"c"+Date.now(), cat:"ordnung", text:t, mini:sh.querySelector("#ntM").value.trim() || null, level:lv, rhythm:rh});
+      save(); toast("Aufgabe hinzugefügt."); openSheet(draw(), mount);
+    };
+  };
+  openSheet(draw(), mount);
+}
+
+/* ================= Backup ================= */
+function exportBackup(){
+  try{
+    S.settings.lastBackup = Date.now(); save();
+    const blob = new Blob([JSON.stringify(S, null, 1)], {type:"application/json"});
+    const file = new File([blob], `bloom-backup-${dkey()}.json`, {type:"application/json"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ navigator.share({files:[file], title:"Bloom Backup"}).catch(()=>{}); }
+    else { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 1000); }
+    render(); toast("Backup erstellt. Speicher die Datei am besten in iCloud Drive.");
+  } catch(e){ toast("Backup hat nicht geklappt: " + e.message); }
+}
+function importBackup(ev){
+  const f = ev.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const data = JSON.parse(r.result);
+      if(!data || data.v !== 1 || !data.days) throw new Error("Das ist keine Bloom-Sicherung.");
+      if(!confirm("Backup laden? Die aktuellen Daten auf diesem Handy werden ersetzt.")) return;
+      S = Object.assign(freshState(), data); save(); render(); toast("Backup geladen. Willkommen zurück im Garten.");
+    } catch(e){ toast("Konnte nicht geladen werden: " + e.message); }
+  };
+  r.readAsText(f);
+}
+
+/* ================= KI (optional, über eigenen Worker) ================= */
+function aiContext(){
+  const ks = lastNDays(14);
+  const days = ks.filter(k=>S.days[k]).map(k => ({datum:k, wochentag:WD[parseKey(k).getDay()], energie:S.days[k].energy, erledigt:S.days[k].done.map(x=>x.text+" ("+pad(new Date(x.ts).getHours())+" Uhr)"), mama:S.days[k].mama.map(x=>x.label)}));
+  const ci = S.checkins.filter(c => ks.includes(dkey(new Date(c.ts)))).map(c => ({zeit:new Date(c.ts).toLocaleString("de-DE"), stimmung:MOODS[c.mood-1].w, energie:["","wenig","mittel","gut"][c.energy||0], tags:c.tags, notiz:c.note}));
+  return {name:S.profile.name, tochter:S.profile.kid||null, schwer_faellt:S.profile.struggles.map(k=>CATS[k]?.name), schwester:S.settings.laraName, bisherige_blueten:S.totalBlooms, tage:days, checkins:ci, erkannte_muster:insights().map(i=>i.b)};
+}
+async function callAI(mode, messages){
+  const res = await fetch(S.settings.aiUrl, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({mode, context:aiContext(), messages})});
+  if(!res.ok) throw new Error("Der KI-Dienst antwortet gerade nicht (" + res.status + ").");
+  const j = await res.json(); if(!j.text) throw new Error("Leere Antwort."); return j.text;
+}
+async function aiWriteLetter(e){
+  const b = e.currentTarget; b.disabled = true; b.textContent = "Schreibt gerade …";
+  try{ const t = await callAI("letter", []); S.letters[weekKey()] = t; save(); render(); toast("Dein neuer Wochenbrief ist da."); }
+  catch(err){ toast(err.message); b.disabled=false; b.textContent="Nochmal versuchen"; }
+}
+function openAiChat(){
+  const draw = () => `<h2>Mit Bloom reden</h2><p class="small muted" style="margin:4px 0 6px">Bloom kennt deine letzten 2 Wochen. Bloom ist keine Therapeutin, aber eine gute Zuhörerin.</p>
+    <div class="chat" id="chatBox">${S.chat.length ? S.chat.slice(-20).map(m=>`<div class="msg ${m.role==="user"?"me":"ai"}">${esc(m.content)}</div>`).join("") : `<div class="msg ai">Hey ${esc(S.profile.name)}. Was ist los? Du kannst mir alles schreiben, auch „Ich schaff heute gar nichts“.</div>`}</div>
+    <textarea id="chatIn" style="min-height:60px" placeholder="Schreib was …"></textarea>
+    <div class="row" style="margin-top:10px"><button class="btn btn-primary" style="flex:1" id="chatSend">Senden</button><button class="btn btn-ghost" id="chatClear">Leeren</button></div>`;
+  const mount = sh => {
+    const box = sh.querySelector("#chatBox"); box.lastElementChild && box.lastElementChild.scrollIntoView();
+    sh.querySelector("#chatClear").onclick = () => { S.chat = []; save(); openSheet(draw(), mount); };
+    sh.querySelector("#chatSend").onclick = async (e) => {
+      const inp = sh.querySelector("#chatIn"); const t = inp.value.trim(); if(!t) return;
+      S.chat.push({role:"user", content:t}); save(); inp.value = "";
+      box.insertAdjacentHTML("beforeend", `<div class="msg me">${esc(t)}</div><div class="msg ai" id="typing">…</div>`); box.lastElementChild.scrollIntoView();
+      e.currentTarget.disabled = true;
+      try{ const ans = await callAI("chat", S.chat.slice(-12)); S.chat.push({role:"assistant", content:ans}); save(); $("#typing").outerHTML = `<div class="msg ai">${esc(ans)}</div>`; }
+      catch(err){ $("#typing").outerHTML = `<div class="msg ai">${esc(err.message)}</div>`; S.chat.pop(); save(); }
+      e.currentTarget.disabled = false;
+      if(DISTRESS.test(t)) setTimeout(()=>openHelp(true), 1200);
+    };
+  };
+  openSheet(draw(), mount);
+}
+
+/* ================= Onboarding ================= */
+function renderOnboarding(step, data={name:BLOOM_CONFIG.sisterName||"", kid:BLOOM_CONFIG.kidName||"", struggles:[]}){
+  const steps = `<div class="steps">${[0,1,2,3].map(i=>`<i class="${i<=step?"on":""}"></i>`).join("")}</div>`;
+  let html = "";
+  if(step===0) html = `<div class="kicker">Ein Geschenk von ${esc(BLOOM_CONFIG.laraName)}</div><div class="big">${data.name?`${esc(data.name)}, das ist <em>für dich</em>.`:`Willkommen in <em>Bloom</em>.`}</div>
+    <p class="sub">Eine App, die dich nicht stresst. Hier sammelst du nur. Du verlierst nie etwas, und jede kleine Sache lässt eine Blüte wachsen.</p>
+    <button class="btn btn-primary btn-block" id="obNext">Los geht's</button>`;
+  if(step===1) html = `<div class="big" style="font-size:36px">Passt das so?</div><input type="text" id="obName" value="${esc(data.name)}" placeholder="Dein Name" autocomplete="given-name">
+    <label class="f" style="margin-top:22px">Und deine Tochter?</label><input type="text" id="obKid" value="${esc(data.kid)}" placeholder="Name (optional)">
+    <button class="btn btn-primary btn-block" id="obNext" style="margin-top:24px">Weiter</button>`;
+  if(step===2) html = `<div class="big" style="font-size:36px">Was fällt dir im Alltag am schwersten?</div><p class="sub">Tipp alles an, was passt. Ich achte dann besonders darauf, es dir leicht zu machen.</p>
+    <div>${STRUGGLES.map(s=>`<button class="chip ${data.struggles.includes(s.k)?"on":""}" data-st="${s.k}">${s.label}</button>`).join("")}</div>
+    <button class="btn btn-primary btn-block" id="obNext" style="margin-top:24px">Weiter</button>`;
+  if(step===3) html = `<div class="big" style="font-size:36px">So funktioniert's. <em>Ganz kurz.</em></div>
+    <div class="card"><div class="insight"><div class="ic" style="background:var(--blush)">${ic.sun}</div><div><b style="font-weight:600">Heute</b><div class="small muted">Sag, wie viel Kraft du hast. Ich zeig dir immer nur eine kleine Sache.</div></div></div></div>
+    <div class="card"><div class="insight"><div class="ic" style="background:var(--sage)">${ic.flower}</div><div><b style="font-weight:600">Garten</b><div class="small muted">Jede Sache wird eine Blüte. Die bleibt für immer, auch nach Pausen.</div></div></div></div>
+    <div class="card"><div class="insight"><div class="ic" style="background:var(--sky)">${ic.clock}</div><div><b style="font-weight:600">Termine</b><div class="small muted">Trag sie ein, dann stehen sie auf deiner Startseite und im Kalender.</div></div></div></div>
+    <div class="card"><div class="insight"><div class="ic" style="background:var(--butter)">${ic.pen}</div><div><b style="font-weight:600">Check-in</b><div class="small muted">Kurz sagen, wie's dir geht. So lerne ich, was dir guttut.</div></div></div></div>
+    <button class="btn btn-primary btn-block" id="obNext" style="margin-top:10px">Fertig, zeig mir meinen Tag</button>`;
+  $("#root").innerHTML = `<div class="app"><div class="ob">${step?steps:""}${html}</div></div>`;
+  document.querySelectorAll("[data-st]").forEach(b => b.onclick = () => { const k=b.dataset.st; const i=data.struggles.indexOf(k); i>=0?data.struggles.splice(i,1):data.struggles.push(k); b.classList.toggle("on"); });
+  $("#obNext").onclick = () => {
+    if(step===1){ data.name = $("#obName").value.trim(); data.kid = $("#obKid").value.trim(); if(!data.name){ toast("Wie darf ich dich nennen?"); return; } }
+    if(step < 3) return renderOnboarding(step+1, data);
+    S.profile = {name:data.name, kid:data.kid, struggles:data.struggles, createdAt:Date.now()}; S.firstDay = dkey(); S.lastOpen = null; onOpen(); save(); TAB="heute"; render();
+  };
+}
+
+/* ================= Start ================= */
+function onOpen(){
+  if(!S.profile) return;
+  const k = dkey();
+  if(S.lastOpen && S.lastOpen !== k){
+    const gap = daysBetween(S.lastOpen, k);
+    if(gap >= 3){ S.comeback = true; addBloom(3); }
+  }
+  S.lastOpen = k;
+  // Jeden neuen Tag einen neuen Brief freischalten
+  if(S.lastNoteDay !== k && S.notesUnlocked < LARA_LETTERS.length){ S.notesUnlocked++; S.newNote = true; S.lastNoteDay = k; }
+  // Sanfte Backup-Erinnerung einmal pro Woche
+  const lb = S.settings.lastBackup, ln = S.settings.lastBackupNudge;
+  if((!lb || Date.now()-lb > 7*864e5) && (!ln || Date.now()-ln > 7*864e5) && Object.keys(S.days).length >= 3){
+    S.settings.lastBackupNudge = Date.now(); setTimeout(()=>toast("Kleine Erinnerung: Mach mal wieder ein Backup unter „Ich“. Dein Garten soll sicher sein.", 5000), 1500);
+  }
+  save();
+}
+load(); window.SESSION_LINE = pick(LARA_LINES); window.SESSION_LAUGH = pick(LAUGHS); onOpen(); render();
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+if("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(()=>{});
+document.addEventListener("visibilitychange", () => { if(document.visibilityState==="visible" && S.profile && S.lastOpen !== dkey()){ S.current = null; onOpen(); render(); } });
+</script>
+</body>
+</html>
